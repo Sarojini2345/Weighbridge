@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 public class SiteMasterDto {
-    private int siteId;
+    private String siteId;
     @NotBlank(message = "Site is required")
     private String siteName;
 

@@ -22,6 +22,7 @@ public class RoleMasterServiceImpl implements RoleMasterService {
     private final ModelMapper modelMapper;
     @Override
     public RoleMasterDto createRole(RoleMasterDto roleDto) {
+
         RoleMaster role = modelMapper.map(roleDto, RoleMaster.class);
 
         RoleMaster savedRole = null;
@@ -33,6 +34,8 @@ public class RoleMasterServiceImpl implements RoleMasterService {
 
         return modelMapper.map(savedRole, RoleMasterDto.class);
     }
+
+
 
     @Override
     public void deleteRole(int roleId) {

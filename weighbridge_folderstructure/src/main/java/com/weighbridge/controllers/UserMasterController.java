@@ -1,5 +1,6 @@
 package com.weighbridge.controllers;
 
+import com.weighbridge.payloads.UpdateRequest;
 import com.weighbridge.payloads.UserRequest;
 import com.weighbridge.entities.UserMaster;
 import com.weighbridge.payloads.UserResponse;
@@ -50,9 +51,9 @@ public class UserMasterController {
 
     // Update user by userId
     @PutMapping("/updateUser/{userId}")
-    public ResponseEntity<UserResponse> updateUserById(@Validated @RequestBody UserRequest userRequest, @PathVariable String userId){
+    public ResponseEntity<UserResponse> updateUserById(@Validated @RequestBody UpdateRequest updateRequest, @PathVariable String userId){
 
-        UserResponse response = userMasterService.updateUserById(userRequest, userId);
+        UserResponse response = userMasterService.updateUserById(updateRequest, userId);
         return ResponseEntity.ok(response);
     }
 

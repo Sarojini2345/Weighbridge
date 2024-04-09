@@ -1,5 +1,6 @@
 package com.weighbridge.services;
 
+import com.weighbridge.payloads.UpdateRequest;
 import com.weighbridge.payloads.UserRequest;
 import com.weighbridge.entities.UserMaster;
 import com.weighbridge.payloads.UserResponse;
@@ -15,5 +16,5 @@ public interface UserMasterService {
 
     String deleteUserById(String userId);
 
-    UserResponse updateUserById(UserRequest userRequest, String userId);
+    UserResponse updateUserById(UpdateRequest updateRequest, String userId);
 }

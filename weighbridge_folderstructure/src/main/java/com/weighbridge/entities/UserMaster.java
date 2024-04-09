@@ -23,7 +23,6 @@ public class UserMaster {
     @Column(name = "user_id", unique = true)
     @NotBlank(message = "UserId is required")
     @Size(min=5, max = 15, message = "UserId id must be between 5 and 15 characters")
-    @Pattern(regexp = "^[A-Za-z0-9]+$", message = "UserId must be alphanumeric")
     private String userId;
 
     @NotNull(message = "Site is required")

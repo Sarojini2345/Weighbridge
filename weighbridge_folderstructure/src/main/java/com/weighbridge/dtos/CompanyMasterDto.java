@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 public class CompanyMasterDto {
-    private int companyId;
+    private String companyId;
 
     @NotBlank(message = "Company is required")
     private String companyName;

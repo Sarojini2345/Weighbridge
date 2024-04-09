@@ -14,9 +14,8 @@ import lombok.NoArgsConstructor;
 public class CompanyMaster {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "company_id")
-    private int companyId;
+    private String companyId;
 
     @NotBlank
     @Column(name = "company_name")

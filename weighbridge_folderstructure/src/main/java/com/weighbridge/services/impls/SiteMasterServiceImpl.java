@@ -28,11 +28,23 @@ public class SiteMasterServiceImpl implements SiteMasterService {
     private final CompanyMasterRepository companyMasterRepository;
     @Override
     public SiteMasterDto createSite(SiteMasterDto siteMasterDto) {
+        siteMasterDto.setSiteId(generateSiteId(siteMasterDto.getSiteName()));
         SiteMaster site = modelMapper.map(siteMasterDto, SiteMaster.class);
 
         SiteMaster savedSite = siteMasterRepository.save(site);
 
         return modelMapper.map(savedSite, SiteMasterDto.class);
+    }
+
+    private static String generateSiteId(String siteName) {
+        // Extract the first three letters of the site name (or abbreviation)
+        String siteAbbreviation = siteName.substring(0, Math.min(siteName.length(), 3)).toUpperCase();
+
+        // Concatenate the abbreviation and unique identifier
+        String siteId = siteAbbreviation ;
+
+
+        return siteId;
     }
 
     @Override

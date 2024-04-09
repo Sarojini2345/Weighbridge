@@ -15,9 +15,8 @@ import lombok.NoArgsConstructor;
 public class SiteMaster {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "site_id")
-    private int siteId;
+    private String siteId;
 
     @NotBlank
     @Column(name = "site_name")

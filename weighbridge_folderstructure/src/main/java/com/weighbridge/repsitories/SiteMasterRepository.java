@@ -7,9 +7,9 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
-public interface SiteMasterRepository extends JpaRepository<SiteMaster, Integer> {
+public interface SiteMasterRepository extends JpaRepository<SiteMaster, String> {
     @Query("SELECT s.siteName FROM SiteMaster s WHERE s.company.companyId = :companyId")
-    List<String> findAllByCompanyId(@Param("companyId") Integer companyId);
+    List<String> findAllByCompanyId(@Param("companyId") String companyId);
 
     SiteMaster findBySiteName(String site);
 }

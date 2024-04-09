@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
-public interface CompanyMasterRepository extends JpaRepository<CompanyMaster, Integer> {
+public interface CompanyMasterRepository extends JpaRepository<CompanyMaster, String> {
     CompanyMaster findByCompanyName(String company);
 
     @Query("SELECT c.companyName FROM CompanyMaster c")

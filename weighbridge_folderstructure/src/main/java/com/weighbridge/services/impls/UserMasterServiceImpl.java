@@ -2,21 +2,26 @@ package com.weighbridge.services.impls;
 
 import com.weighbridge.entities.*;
 import com.weighbridge.exceptions.ResourceRetrievalException;
+import com.weighbridge.payloads.UpdateRequest;
 import com.weighbridge.payloads.UserRequest;
 import com.weighbridge.exceptions.ResourceCreationException;
 import com.weighbridge.exceptions.ResourceNotFoundException;
 import com.weighbridge.payloads.UserResponse;
 import com.weighbridge.repsitories.*;
 import com.weighbridge.services.UserMasterService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -33,6 +38,11 @@ public class UserMasterServiceImpl implements UserMasterService {
     private final SiteMasterRepository siteMasterRepository;
     private final RoleMasterRepository roleMasterRepository;
     private final UserAuthenticationRepository userAuthenticationRepository;
+
+    private static int uniqueIdentifier = 1;
+
+    @Autowired
+    HttpServletRequest request;
 
     @Override
     public UserMaster createUser(UserRequest userRequest) {
@@ -81,7 +91,8 @@ public class UserMasterServiceImpl implements UserMasterService {
 
         // Create a new UserMaster instance and set its properties from the request
         UserMaster userMaster = new UserMaster();
-        userMaster.setUserId(userRequest.getUserId());
+        String str = generateUserId(companyMaster.getCompanyId(), siteMaster.getSiteId());
+        userMaster.setUserId(str);
         userMaster.setCompany(companyMaster);
         userMaster.setSite(siteMaster);
         userMaster.setUserEmailId(userRequest.getEmailId());
@@ -89,10 +100,13 @@ public class UserMasterServiceImpl implements UserMasterService {
         userMaster.setUserFirstName(userRequest.getFirstName());
         userMaster.setUserMiddleName(userRequest.getMiddleName());
         userMaster.setUserLastName(userRequest.getLastName());
+        HttpSession session=request.getSession();
+        userMaster.setUserCreatedBy(String.valueOf(session.getAttribute("userId")));
+        userMaster.setUserCreatedDate(String.valueOf(LocalDateTime.now()));
 
         // Create a new UserAuthentication instance and set its properties
         UserAuthentication userAuthentication = new UserAuthentication();
-        userAuthentication.setUserId(userRequest.getUserId());
+        userAuthentication.setUserId(str);
         userAuthentication.setUserPassword(userRequest.getPassword());
 
         Set<String> setOfRoles = userRequest.getRole();
@@ -110,6 +124,8 @@ public class UserMasterServiceImpl implements UserMasterService {
             });
         }
         userAuthentication.setRoles(roles);
+        log.info(String.valueOf(userMaster));
+
 
         try {
             // Save user to the UserMaster table
@@ -134,6 +150,16 @@ public class UserMasterServiceImpl implements UserMasterService {
         }
 
 
+    }
+
+    public static synchronized String generateUserId(String companyId, String siteId) {
+        // Concatenate company ID, site ID, and unique identifier
+        String userId = companyId + "_" + siteId + "_" + String.format("%02d", uniqueIdentifier);
+
+        // Increment the unique identifier
+        uniqueIdentifier = (uniqueIdentifier + 1) % 1000; // Ensure it's always 3 digits
+
+        return userId;
     }
 
     @Override
@@ -218,7 +244,7 @@ public class UserMasterServiceImpl implements UserMasterService {
     }
 
     @Override
-    public UserResponse updateUserById(UserRequest userRequest, String userId) {
+    public UserResponse updateUserById(UpdateRequest updateRequest, String userId) {
         // Check if the user is existing with provided userId
         UserMaster userMaster = userMasterRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", "userId", userId));
 
@@ -227,17 +253,17 @@ public class UserMasterServiceImpl implements UserMasterService {
 
         try {
             // Find the company by name in the CompanyMaster table
-            companyMaster = companyMasterRepository.findByCompanyName(userRequest.getCompany());
+            companyMaster = companyMasterRepository.findByCompanyName(updateRequest.getCompany());
             if (companyMaster == null){
                 // If company is not found, throw a ResourceNotFoundException
-                throw new ResourceNotFoundException("Company","name", userRequest.getCompany() );
+                throw new ResourceNotFoundException("Company","name", updateRequest.getCompany() );
             }
 
             // Find the site by name in the SiteMaster table
-            siteMaster = siteMasterRepository.findBySiteName(userRequest.getSite());
+            siteMaster = siteMasterRepository.findBySiteName(updateRequest.getSite());
             if (siteMaster == null){
                 // If site is not found, throw a ResourceNotFoundException
-                throw new ResourceNotFoundException("CompanySite","name", userRequest.getSite());
+                throw new ResourceNotFoundException("CompanySite","name", updateRequest.getSite());
             }
 
         } catch (DataAccessException e) {
@@ -248,15 +274,15 @@ public class UserMasterServiceImpl implements UserMasterService {
         // Set userMaster object properties from the request
         userMaster.setCompany(companyMaster);
         userMaster.setSite(siteMaster);
-        userMaster.setUserEmailId(userRequest.getEmailId());
-        userMaster.setUserContactNo(userRequest.getContactNo());
-        userMaster.setUserFirstName(userRequest.getFirstName());
-        userMaster.setUserMiddleName(userRequest.getMiddleName());
-        userMaster.setUserLastName(userRequest.getLastName());
+        userMaster.setUserEmailId(updateRequest.getEmailId());
+        userMaster.setUserContactNo(updateRequest.getContactNo());
+        userMaster.setUserFirstName(updateRequest.getFirstName());
+        userMaster.setUserMiddleName(updateRequest.getMiddleName());
+        userMaster.setUserLastName(updateRequest.getLastName());
 
         UserAuthentication userAuthentication = userAuthenticationRepository.findByUserId(userId);
         // todo: if password is coming then i have to also set the password
-        Set<String> setOfRoles = userRequest.getRole();
+        Set<String> setOfRoles = updateRequest.getRole();
         Set<RoleMaster> updatedRoles = new HashSet<>(userAuthentication.getRoles()); // Copy current roles
 
         if (setOfRoles != null) {

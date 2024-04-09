@@ -2,8 +2,9 @@ package com.weighbridge.services;
 
 import com.weighbridge.dtos.LoginDto;
 import com.weighbridge.entities.UserAuthentication;
+import com.weighbridge.payloads.LoginResponse;
 
 public interface UserAuthenticationService {
 
-    String loginUser(LoginDto dto);
+    LoginResponse loginUser(LoginDto dto);
 }
