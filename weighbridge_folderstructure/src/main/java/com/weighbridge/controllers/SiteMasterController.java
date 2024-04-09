@@ -36,6 +36,8 @@ public class SiteMasterController {
         return ResponseEntity.ok(savedSites);
     }
 
+
+
     // todo: create method to get all the sites as a list of strings
     @GetMapping("/company/{companyName}")
     public ResponseEntity<List<String>> GetAllSitesOfCompany(@PathVariable String companyName){

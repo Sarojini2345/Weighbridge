@@ -37,7 +37,12 @@ public class RoleMasterServiceImpl implements RoleMasterService {
     @Override
     public void deleteRole(int roleId) {
         try {
-            roleMasterRepository.deleteById(roleId);
+            RoleMaster roleMaster = roleMasterRepository.findById(roleId).get();
+            if(roleMaster.getRoleStatus()=="ACTIVE"){
+                roleMaster.setRoleStatus("INACTIVE");
+                roleMasterRepository.save(roleMaster);
+
+            }
         } catch (Exception e) {
             throw new ResourceNotFoundException("Role","roleName", roleMasterRepository.findRoleNameByRoleId(roleId));
         }

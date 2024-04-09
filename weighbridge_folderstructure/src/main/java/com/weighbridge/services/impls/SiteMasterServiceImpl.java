@@ -73,3 +73,5 @@ public class SiteMasterServiceImpl implements SiteMasterService {
         return allByCompanyId;
     }
 }
+
+// todo: do validation if a site is assigned to company , it show a popup to override it

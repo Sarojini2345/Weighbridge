@@ -25,7 +25,7 @@ public class RoleMaster {
     private String roleName;
 
     @Column(name = "role_status")
-    private String roleStatus;
+    private String roleStatus="ACTIVE";
 
     @Column(name = "role_created_by")
     private String roleCreatedBy;

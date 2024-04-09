@@ -168,6 +168,7 @@ public class UserMasterServiceImpl implements UserMasterService {
                             .map(RoleMaster::getRoleName) // Assuming getRoleName() returns the role name as String
                             .collect(Collectors.toSet());
                     userResponse.setRole(roleNames);
+                    userResponse.setStatus(userMaster.getUserStatus());
 
                     return userResponse;
                 })
@@ -200,6 +201,7 @@ public class UserMasterServiceImpl implements UserMasterService {
                 .map(RoleMaster::getRoleName) // Assuming getRoleName() returns the role name as String
                 .collect(Collectors.toSet());
         userResponse.setRole(roleNames);
+        userResponse.setStatus(userMaster.getUserStatus());
 
         return userResponse;
     }

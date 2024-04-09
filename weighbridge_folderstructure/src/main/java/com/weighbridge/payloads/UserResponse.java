@@ -19,4 +19,5 @@ public class UserResponse {
     private String firstName;
     private String middleName;
     private String lastName;
+    private String status;
 }
