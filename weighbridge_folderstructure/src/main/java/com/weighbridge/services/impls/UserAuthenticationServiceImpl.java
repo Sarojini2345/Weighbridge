@@ -26,11 +26,13 @@ public class UserAuthenticationServiceImpl implements UserAuthenticationService{
             throw new ResourceNotFoundException("User", "userId",dto.getUserId());
         }
         UserMaster userMaster=userMasterRepository.findById(dto.getUserId()).orElseThrow(()->new ResourceNotFoundException("User","userId", dto.getUserId()));
+
         if(userMaster.getUserStatus().equals("INACTIVE")){
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"User is inactive");
         }
         String password=userAuthenticationRepository.findPasswordByUserId(dto.getUserId());
         if(password.equals(dto.getUserPassword())){
+
              return "User logged in successfully !";
         }
         else{

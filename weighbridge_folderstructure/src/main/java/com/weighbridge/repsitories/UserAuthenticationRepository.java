@@ -15,6 +15,6 @@ public interface UserAuthenticationRepository extends JpaRepository<UserAuthenti
     Set<RoleMaster> findRolesByUserId(String userId);
 
     UserAuthentication findByUserId(String userId);
-@Query("select u.password from UserAuthentication u where u.userId=:userId")
+@Query("select u.userPassword from UserAuthentication u where u.userId=:userId")
     String findPasswordByUserId(String userId);
 }
