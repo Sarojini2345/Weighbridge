@@ -284,6 +284,13 @@ public class UserMasterServiceImpl implements UserMasterService {
                 throw new ResourceNotFoundException("CompanySite", "name", updateRequest.getSite());
             }
 
+            if (userMasterRepository.existsByUserContactNoAndUserIdNot(updateRequest.getContactNo(), userId)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"Contact number is already in use by another user");
+            }
+            if (userMasterRepository.existsByUserEmailIdAndUserIdNot(updateRequest.getEmailId(), userId)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"EmailId is already in use by another user");
+            }
+
         } catch (DataAccessException e) {
             // Catch any database access exceptions and throw an InternalServerError exception
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Database access error occurred", e);

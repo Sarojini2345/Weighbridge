@@ -20,4 +20,8 @@ public interface UserMasterRepository extends JpaRepository<UserMaster, String> 
 
     boolean existsByUserContactNo(String contactNo);
 
+    boolean existsByUserContactNoAndUserIdNot(String contactNo, String userId);
+
+
+    boolean existsByUserEmailIdAndUserIdNot(String emailId, String userId);
 }

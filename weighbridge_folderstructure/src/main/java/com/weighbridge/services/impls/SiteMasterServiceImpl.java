@@ -72,7 +72,7 @@ public class SiteMasterServiceImpl implements SiteMasterService {
                 SiteMaster site = siteMasterRepository.findBySiteName(siteName);
 
                 if (site != null) {
-                    if(!site.getCompany().equals(company)){
+
                         site.setCompany(company);
                         siteMasterRepository.save(site);
                     }
@@ -80,10 +80,6 @@ public class SiteMasterServiceImpl implements SiteMasterService {
                         throw new ResponseStatusException(HttpStatus.CONFLICT,"Company with site name already exist");
                     }
 
-                } else {
-                    // Handle case where site doesn't exist
-                    throw new ResourceNotFoundException("Site", "siteName", siteName);
-                }
             });
         }
         return "Site Assigned to company successful";
