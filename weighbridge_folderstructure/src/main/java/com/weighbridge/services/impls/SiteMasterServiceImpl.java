@@ -11,7 +11,9 @@ import com.weighbridge.repsitories.SiteMasterRepository;
 import com.weighbridge.services.SiteMasterService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -29,6 +31,7 @@ public class SiteMasterServiceImpl implements SiteMasterService {
     @Override
     public SiteMasterDto createSite(SiteMasterDto siteMasterDto) {
         siteMasterDto.setSiteId(generateSiteId(siteMasterDto.getSiteName()));
+
         SiteMaster site = modelMapper.map(siteMasterDto, SiteMaster.class);
 
         SiteMaster savedSite = siteMasterRepository.save(site);
@@ -61,16 +64,24 @@ public class SiteMasterServiceImpl implements SiteMasterService {
             throw new ResourceNotFoundException("Company", "companyName", siteRequest.getCompanyName());
         }
 
+
         Set<String> listOfSites = siteRequest.getSites();
         Set<SiteMaster> sites = new HashSet<>();
         if (listOfSites != null) {
             listOfSites.forEach(siteName -> {
                 SiteMaster site = siteMasterRepository.findBySiteName(siteName);
+
                 if (site != null) {
-                    site.setCompany(company);
-                    siteMasterRepository.save(site);
+                    if(!site.getCompany().equals(company)){
+                        site.setCompany(company);
+                        siteMasterRepository.save(site);
+                    }
+                    else{
+                        throw new ResponseStatusException(HttpStatus.CONFLICT,"Company with site name already exist");
+                    }
+
                 } else {
-                    // Handle case where role doesn't exist
+                    // Handle case where site doesn't exist
                     throw new ResourceNotFoundException("Site", "siteName", siteName);
                 }
             });
@@ -85,5 +96,4 @@ public class SiteMasterServiceImpl implements SiteMasterService {
         return allByCompanyId;
     }
 }
-
 // todo: do validation if a site is assigned to company , it show a popup to override it
