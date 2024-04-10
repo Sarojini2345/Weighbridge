@@ -50,6 +50,8 @@ public class UserMasterServiceImpl implements UserMasterService {
     @Autowired
     HttpServletRequest request;
 
+
+    // TODO put validation for company and site, if site does not belong to company than it shouldn't create
     @Override
     public String createUser(UserRequest userRequest) {
 
