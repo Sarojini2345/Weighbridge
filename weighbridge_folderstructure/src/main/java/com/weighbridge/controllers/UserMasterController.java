@@ -1,6 +1,5 @@
 package com.weighbridge.controllers;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.weighbridge.payloads.UpdateRequest;
 import com.weighbridge.payloads.UserRequest;
 import com.weighbridge.entities.UserMaster;
@@ -28,12 +27,9 @@ public class UserMasterController {
 
     // Create new user
     @PostMapping
-    public ResponseEntity<Object> createUser(@Validated @RequestBody UserRequest userRequest){
+    public ResponseEntity<String> createUser(@Validated @RequestBody UserRequest userRequest){
         String response = userMasterService.createUser(userRequest);
-        // Create a JSON object containing the response message
-        ObjectMapper objectMapper = new ObjectMapper();
-        String jsonResponse = objectMapper.createObjectNode().put("message", response).toString();
-        return new ResponseEntity<>(jsonResponse, HttpStatus.CREATED);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     // Get all users
