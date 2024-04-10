@@ -19,4 +19,5 @@ public interface UserMasterRepository extends JpaRepository<UserMaster, String> 
     boolean existsByUserEmailId(String userEmailId);
 
     boolean existsByUserContactNo(String contactNo);
+
 }
