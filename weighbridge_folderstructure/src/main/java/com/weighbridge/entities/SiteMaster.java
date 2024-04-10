@@ -7,6 +7,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -37,12 +39,12 @@ public class SiteMaster {
     private String siteCreatedBy;
 
     @Column(name = "site_created_date")
-    private String siteCreatedDate;
+    private LocalDateTime siteCreatedDate;
 
     @Column(name = "site_modified_by")
     private String siteModifiedBy;
 
     @Column(name = "site_modified_date")
-    private String siteModifiedDate;
+    private LocalDateTime siteModifiedDate;
 
 }

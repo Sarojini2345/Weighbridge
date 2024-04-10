@@ -4,14 +4,16 @@ import com.weighbridge.payloads.UpdateRequest;
 import com.weighbridge.payloads.UserRequest;
 import com.weighbridge.entities.UserMaster;
 import com.weighbridge.payloads.UserResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
 public interface UserMasterService {
 
-    UserMaster createUser(UserRequest userRequest);
+    String createUser(UserRequest userRequest);
 
-    List<UserResponse> getAllUsers();
+    Page<UserResponse> getAllUsers(Pageable pageable);
     UserResponse getSingleUser(String userId);
 
     String deleteUserById(String userId);
