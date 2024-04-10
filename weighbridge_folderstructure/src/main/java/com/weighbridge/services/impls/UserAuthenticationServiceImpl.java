@@ -1,11 +1,10 @@
 package com.weighbridge.services.impls;
 
 import com.weighbridge.dtos.LoginDto;
-import com.weighbridge.entities.RoleMaster;
-import com.weighbridge.entities.UserAuthentication;
-import com.weighbridge.entities.UserMaster;
+import com.weighbridge.entities.*;
 import com.weighbridge.exceptions.ResourceNotFoundException;
 import com.weighbridge.payloads.LoginResponse;
+import com.weighbridge.repsitories.SiteMasterRepository;
 import com.weighbridge.repsitories.UserAuthenticationRepository;
 import com.weighbridge.repsitories.UserMasterRepository;
 import com.weighbridge.services.UserAuthenticationService;
@@ -21,29 +20,45 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Service
-public class UserAuthenticationServiceImpl implements UserAuthenticationService{
+public class UserAuthenticationServiceImpl implements UserAuthenticationService {
     @Autowired
     private UserAuthenticationRepository userAuthenticationRepository;
     @Autowired
     private UserMasterRepository userMasterRepository;
+
+    @Autowired
+    private SiteMasterRepository siteMasterRepository;
     @Autowired
     HttpServletRequest request;
+
     @Override
     public LoginResponse loginUser(LoginDto dto) {
         UserAuthentication userAuthentication = userAuthenticationRepository.findByUserId(dto.getUserId());
-        if(userAuthentication==null){
-            throw new ResourceNotFoundException("User", "userId",dto.getUserId());
+        if (userAuthentication == null) {
+            throw new ResourceNotFoundException("User", "userId", dto.getUserId());
         }
-        UserMaster userMaster=userMasterRepository.findById(dto.getUserId()).orElseThrow(()->new ResourceNotFoundException("User","userId", dto.getUserId()));
+        UserMaster userMaster = userMasterRepository.findById(dto.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "userId", dto.getUserId()));
 
-        if(userMaster.getUserStatus().equals("INACTIVE")){
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"User is inactive");
+        if (userMaster.getUserStatus().equals("INACTIVE")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User is inactive");
         }
-        String password=userAuthenticationRepository.findPasswordByUserId(dto.getUserId());
-        if(password.equals(dto.getUserPassword())){
-            HttpSession session=request.getSession();
-            session.setAttribute("userId",dto.getUserId());
-            LoginResponse loginResponse=new LoginResponse();
+        String password = userAuthenticationRepository.findPasswordByUserId(dto.getUserId());
+        if (password.equals(dto.getUserPassword())) {
+            HttpSession session = request.getSession();
+            session.setAttribute("userId", dto.getUserId());
+
+            //for getting the site details from user master
+            SiteMaster siteMaster = userMaster.getSite();
+            //add userSite to session so that after login , fetch from session
+            session.setAttribute("userSite", siteMaster.getSiteId());
+
+            //for getting the company details from user master
+            CompanyMaster companyMaster = userMaster.getCompany();
+            //add userSite to session so that after login , fetch from session
+            session.setAttribute("userCompany", companyMaster.getCompanyId());
+
+
+            LoginResponse loginResponse = new LoginResponse();
             loginResponse.setMessage("User logged in successfully !");
 
 
@@ -57,11 +72,17 @@ public class UserAuthenticationServiceImpl implements UserAuthenticationService{
                 });
             }
             loginResponse.setRoles(roles);
-            session.setAttribute("roles",roles);
+            session.setAttribute("roles", roles);
+
+            if(userMaster.getUserMiddleName()!=null){
+                loginResponse.setUserName(userMaster.getUserFirstName()+" "+userMaster.getUserMiddleName()+" "+userMaster.getUserLastName());
+            }
+            else{
+                loginResponse.setUserName(userMaster.getUserFirstName()+" "+userMaster.getUserLastName());
+            }
             return loginResponse;
-        }
-        else{
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid userId or password");
+        } else {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid userId or password");
         }
     }
 }

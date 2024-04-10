@@ -17,6 +17,8 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -26,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -39,38 +42,48 @@ public class UserMasterServiceImpl implements UserMasterService {
     private final RoleMasterRepository roleMasterRepository;
     private final UserAuthenticationRepository userAuthenticationRepository;
 
-    private static int uniqueIdentifier = 1;
+
+    private final SequenceGeneratorRepository sequenceGeneratorRepository;
+
+
 
     @Autowired
     HttpServletRequest request;
 
     @Override
-    public UserMaster createUser(UserRequest userRequest) {
+    public String createUser(UserRequest userRequest) {
 
         CompanyMaster companyMaster = null;
         SiteMaster siteMaster = null;
 
         try {
             // Check if the userId already exists in the UserMaster table
-            boolean userIdExistsInUserMaster = userMasterRepository.existsByUserId(userRequest.getUserId());
-            if (userIdExistsInUserMaster) {
+            boolean userEmailIdExistsInUserMaster = userMasterRepository.existsByUserEmailId(userRequest.getEmailId());
+            if (userEmailIdExistsInUserMaster) {
                 // If userId exists, throw a BadRequest exception
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "UserId is already taken");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email Id is already taken");
+            }
+            boolean userContactExistsInUserMaster = userMasterRepository.existsByUserContactNo(userRequest.getContactNo());
+            if (userContactExistsInUserMaster) {
+                // If userId exists, throw a BadRequest exception
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contact No is already taken");
             }
 
             // Find the company by name in the CompanyMaster table
             companyMaster = companyMasterRepository.findByCompanyName(userRequest.getCompany());
-            if (companyMaster == null){
+            if (companyMaster == null) {
                 // If company is not found, throw a ResourceNotFoundException
-                throw new ResourceNotFoundException("Company","name", userRequest.getCompany() );
+                throw new ResourceNotFoundException("Company", "name", userRequest.getCompany());
             }
 
             // Find the site by name in the SiteMaster table
             siteMaster = siteMasterRepository.findBySiteName(userRequest.getSite());
-            if (siteMaster == null){
+            if (siteMaster == null) {
                 // If site is not found, throw a ResourceNotFoundException
-                throw new ResourceNotFoundException("CompanySite","name", userRequest.getSite());
+                throw new ResourceNotFoundException("CompanySite", "name", userRequest.getSite());
             }
+
+
 
 //            roleMaster = roleMasterRepository.findByRoleName(userRequest.getRole());
 //            if(roleMaster == null){
@@ -100,9 +113,11 @@ public class UserMasterServiceImpl implements UserMasterService {
         userMaster.setUserFirstName(userRequest.getFirstName());
         userMaster.setUserMiddleName(userRequest.getMiddleName());
         userMaster.setUserLastName(userRequest.getLastName());
-        HttpSession session=request.getSession();
+        HttpSession session = request.getSession();
         userMaster.setUserCreatedBy(String.valueOf(session.getAttribute("userId")));
-        userMaster.setUserCreatedDate(String.valueOf(LocalDateTime.now()));
+        userMaster.setUserCreatedDate(LocalDateTime.now());
+        userMaster.setUserModifiedBy(String.valueOf(session.getAttribute("userId")));
+        userMaster.setUserModifiedDate(LocalDateTime.now());
 
         // Create a new UserAuthentication instance and set its properties
         UserAuthentication userAuthentication = new UserAuthentication();
@@ -135,15 +150,7 @@ public class UserMasterServiceImpl implements UserMasterService {
             userAuthenticationRepository.save(userAuthentication);
 
             // Return the saved user object
-            return savedUser;
-        } catch (DataIntegrityViolationException e){
-            if (e.getMessage().contains("email_id")){
-                throw new ResourceCreationException("EmailId already exists", e);
-            } else if (e.getMessage().contains("contact_no")){
-                throw new ResourceCreationException("ContactNo already exists", e);
-            } else {
-                throw new ResourceCreationException("Failed to create User", e);
-            }
+            return "User is created successfully with userid : " + savedUser.getUserId();
         } catch (Exception e) {
             // Catch any exceptions during save operations and throw a ResourceCreationException
             throw new ResourceCreationException("Failed to create User", e);
@@ -151,56 +158,67 @@ public class UserMasterServiceImpl implements UserMasterService {
 
 
     }
+    public synchronized String generateUserId(String companyId, String siteId) {
+        // Retrieve the current value of the unique identifier from the database for the given company and site
+        SequenceGenerator sequenceGenerator = sequenceGeneratorRepository.findByCompanyIdAndSiteId(companyId, siteId)
+                .orElse(new SequenceGenerator(companyId, siteId, 1)); // Initialize to 1 if not found
+        int uniqueIdentifier = sequenceGenerator.getNextValue();
 
-    public static synchronized String generateUserId(String companyId, String siteId) {
         // Concatenate company ID, site ID, and unique identifier
         String userId = companyId + "_" + siteId + "_" + String.format("%02d", uniqueIdentifier);
 
         // Increment the unique identifier
         uniqueIdentifier = (uniqueIdentifier + 1) % 1000; // Ensure it's always 3 digits
 
+        // Update the unique identifier value in the database
+        sequenceGenerator.setNextValue(uniqueIdentifier);
+        sequenceGeneratorRepository.save(sequenceGenerator);
+
         return userId;
     }
 
+
+//    public static synchronized String generateUserId(String companyId, String siteId) {
+//        // Concatenate company ID, site ID, and unique identifier
+//
+//        String userId = companyId + "_" + siteId + "_" + String.format("%02d", uniqueIdentifier);
+//
+//        // Increment the unique identifier
+//        uniqueIdentifier = (uniqueIdentifier + 1) % 1000; // Ensure it's always 3 digits
+//
+//        return userId;
+//    }
+
     @Override
-    public List<UserResponse> getAllUsers() {
-        List<UserMaster> allUsers = null;
+    public Page<UserResponse> getAllUsers(Pageable pageable) {
+        Page<UserMaster> userPage = userMasterRepository.findAllByOrderByUserModifiedByDesc(pageable);
 
-        try {
-            allUsers = userMasterRepository.findAll();
-        } catch (Exception e) {
-            throw new ResourceRetrievalException("Failed to retrieve users", e);
-        }
+        Page<UserResponse> responsePage = userPage.map(userMaster -> {
+            UserResponse userResponse = new UserResponse();
+            userResponse.setUserId(userMaster.getUserId());
+            userResponse.setFirstName(userMaster.getUserFirstName());
+            userResponse.setMiddleName(userMaster.getUserMiddleName());
+            userResponse.setLastName(userMaster.getUserLastName());
+            userResponse.setEmailId(userMaster.getUserEmailId());
+            userResponse.setContactNo(userMaster.getUserContactNo());
 
-        List<UserResponse> responses = allUsers.stream()
-                .map(userMaster -> {
-                    UserResponse userResponse = new UserResponse();
-                    userResponse.setUserId(userMaster.getUserId());
-                    userResponse.setFirstName(userMaster.getUserFirstName());
-                    userResponse.setMiddleName(userMaster.getUserMiddleName());
-                    userResponse.setLastName(userMaster.getUserLastName());
-                    userResponse.setEmailId(userMaster.getUserEmailId());
-                    userResponse.setContactNo(userMaster.getUserContactNo());
+            CompanyMaster company = userMaster.getCompany();
+            userResponse.setCompany(company != null ? company.getCompanyName() : null);
 
-                    CompanyMaster company = userMaster.getCompany();
-                    userResponse.setCompany(company.getCompanyName());
+            SiteMaster site = userMaster.getSite();
+            userResponse.setSite(site != null ? site.getSiteName() : null);
 
-                    SiteMaster site = userMaster.getSite();
-                    userResponse.setSite(site.getSiteName());
+            Set<RoleMaster> roleMasters = userAuthenticationRepository.findRolesByUserId(userMaster.getUserId());
+            Set<String> roleNames = roleMasters.stream()
+                    .map(RoleMaster::getRoleName)
+                    .collect(Collectors.toSet());
+            userResponse.setRole(roleNames);
+            userResponse.setStatus(userMaster.getUserStatus());
 
-                    Set<RoleMaster> roleMasters = userAuthenticationRepository.findRolesByUserId(userMaster.getUserId());
-                    // Convert Set<RoleMaster> to Set<String> using Java Streams
-                    Set<String> roleNames = roleMasters.stream()
-                            .map(RoleMaster::getRoleName) // Assuming getRoleName() returns the role name as String
-                            .collect(Collectors.toSet());
-                    userResponse.setRole(roleNames);
-                    userResponse.setStatus(userMaster.getUserStatus());
+            return userResponse;
+        });
 
-                    return userResponse;
-                })
-                .collect(Collectors.toList());
-
-        return responses;
+        return responsePage;
     }
 
     @Override
@@ -236,7 +254,7 @@ public class UserMasterServiceImpl implements UserMasterService {
     public String deleteUserById(String userId) {
         UserMaster userMaster = userMasterRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", "userId", userId));
 
-        if(userMaster.getUserStatus().equals("ACTIVE")){
+        if (userMaster.getUserStatus().equals("ACTIVE")) {
             userMaster.setUserStatus("INACTIVE");
             userMasterRepository.save(userMaster);
         }
@@ -254,16 +272,16 @@ public class UserMasterServiceImpl implements UserMasterService {
         try {
             // Find the company by name in the CompanyMaster table
             companyMaster = companyMasterRepository.findByCompanyName(updateRequest.getCompany());
-            if (companyMaster == null){
+            if (companyMaster == null) {
                 // If company is not found, throw a ResourceNotFoundException
-                throw new ResourceNotFoundException("Company","name", updateRequest.getCompany() );
+                throw new ResourceNotFoundException("Company", "name", updateRequest.getCompany());
             }
 
             // Find the site by name in the SiteMaster table
             siteMaster = siteMasterRepository.findBySiteName(updateRequest.getSite());
-            if (siteMaster == null){
+            if (siteMaster == null) {
                 // If site is not found, throw a ResourceNotFoundException
-                throw new ResourceNotFoundException("CompanySite","name", updateRequest.getSite());
+                throw new ResourceNotFoundException("CompanySite", "name", updateRequest.getSite());
             }
 
         } catch (DataAccessException e) {
@@ -291,7 +309,7 @@ public class UserMasterServiceImpl implements UserMasterService {
                 RoleMaster roleMaster = roleMasterRepository.findByRoleName(roleName);
                 if (roleMaster != null && !userAuthentication.getRoles().contains(roleMaster)) {
                     updatedRoles.add(roleMaster);
-                } else if (roleMaster == null){
+                } else if (roleMaster == null) {
                     throw new ResourceNotFoundException("Role", "roleName", roleName);
                 }
             });
@@ -344,99 +362,3 @@ public class UserMasterServiceImpl implements UserMasterService {
 }
 
 
-
-
-
-//    @Override
-//    public UserMaster updateUserById(UserRequest userRequest) {
-//        // Validate the user request before processing
-//        log.info("hi");
-//
-//        log.info("Hello");
-//        log.info(String.valueOf(userRequest));
-//
-//        UserMaster user = userMasterRepository.findById(userRequest.getUserId())
-//                .orElseThrow(() -> new ResourceNotFoundException("User", "UserId", userRequest.getUserId()));
-//
-//        log.info(String.valueOf(user));
-//
-//        // Update user details
-//        user.setUserEmailId(userRequest.getEmailId());
-//        CompanyMaster companyMaster = companyMasterRepository.findByCompanyName(userRequest.getCompany());
-//        user.setCompany(companyMaster);
-//        SiteMaster siteMaster = siteMasterRepository.findByCompanySiteName(userRequest.getCompanySite());
-//        user.setCompanySite(siteMaster);
-//        user.setUserFirstName(userRequest.getFirstName());
-//        user.setUserLastName(userRequest.getLastName());
-//
-//        // Update password if provided
-//        if (userRequest.getPassword() != null) {
-//            user.setPassword(userRequest.getPassword());
-//        }
-//        log.info("hi user");
-//        // Update roles
-//        Set<String> strRoles = userRequest.getRole();
-//        Set<RoleMaster> roles = new HashSet<>();
-//        log.info(strRoles.toString());
-//        if (strRoles != null) {
-//            strRoles.forEach(roleName -> {
-//                RoleMaster roleMaster = roleMasterRepository.findByRoleName(roleName);
-//                if (roleMaster != null) {
-//                    roles.add(roleMaster);
-//                } else {
-//                    // Handle case where role doesn't exist
-//                    throw new ResourceNotFoundException("Role", "roleName", roleName);
-//                }
-//            });
-//        }
-//        user.setRoles(roles);
-//
-//        // Save user
-//        return userMasterRepository.save(user);
-//    }
-
-
-
-
-//    public void validateUserRequest(UserRequest userRequest){
-//        CompanyMaster companyMaster = null;
-//        SiteMaster siteMaster = null;
-//        RoleMaster roleMaster = null;
-//
-//        try {
-//            boolean userIdExistsInUserMaster = userMasterRepository.existsByUserId(userRequest.getUserId());
-//            if (userIdExistsInUserMaster) {
-//                log.info("1");
-//                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "UserId is already taken");
-//
-//            }
-//            log.info("2");
-//            companyMaster = companyMasterRepository.findByCompanyName(userRequest.getCompany());
-//            if (companyMaster == null){
-//                throw new ResourceNotFoundException("Company","name", userRequest.getCompany() );
-//            }
-//
-//            siteMaster = siteMasterRepository.findByCompanySiteName(userRequest.getCompanySite());
-//            if (siteMaster == null){
-//                throw new ResourceNotFoundException("CompanySite","name", userRequest.getCompanySite());
-//            }
-//
-////            roleMaster = roleMasterRepository.findByRoleName(userRequest.getRole());
-////            if(roleMaster == null){
-////                throw new ResourceNotFoundException("Role", "roleName", userRequest.getRole());
-////            }
-//
-//            // Check userId exists in the UserAuthentication table or not
-//         //   boolean userIdExistsInUserAuthentication = userAuthenticationRepository.existsByUserId(userRequest.getUserId());
-//           /* if (userIdExistsInUserAuthentication) {
-//                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "UserId is already taken");
-//            }*/
-//
-//        } catch (DataAccessException e) {
-//            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Database access error occurred", e);
-//        }
-//    }
-
-
-
-//}

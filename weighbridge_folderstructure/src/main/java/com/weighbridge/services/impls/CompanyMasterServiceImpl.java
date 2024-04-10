@@ -6,12 +6,16 @@ import com.weighbridge.exceptions.ResourceNotFoundException;
 import com.weighbridge.exceptions.ResourceRetrievalException;
 import com.weighbridge.repsitories.CompanyMasterRepository;
 import com.weighbridge.services.CompanyMasterService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,15 +25,18 @@ public class CompanyMasterServiceImpl implements CompanyMasterService {
 
     public final CompanyMasterRepository companyMasterRepository;
     public final ModelMapper modelMapper;
-
-
+    @Autowired
+    HttpServletRequest request;
     @Override
     public CompanyMasterDto createCompany(CompanyMasterDto companyMasterDto) {
         CompanyMaster byCompanyName = companyMasterRepository.findByCompanyName(companyMasterDto.getCompanyName());
-        if(byCompanyName==null){
+        if(byCompanyName!=null){
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Company name already exist");
         }
         companyMasterDto.setCompanyId(generateCompanyId(companyMasterDto.getCompanyName()));
+        HttpSession session = request.getSession();
+        companyMasterDto.setCompanyCreatedBy(String.valueOf(session.getAttribute("userId")));
+        companyMasterDto.setCompanyCreatedDate(LocalDateTime.now());
         CompanyMaster company = modelMapper.map(companyMasterDto, CompanyMaster.class);
 
         CompanyMaster savedCompany = companyMasterRepository.save(company);

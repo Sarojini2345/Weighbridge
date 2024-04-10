@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 @Data
@@ -31,13 +32,13 @@ public class RoleMaster {
     private String roleCreatedBy;
 
     @Column(name = "role_created_date")
-    private String roleCreatedDate;
+    private LocalDateTime roleCreatedDate;
 
     @Column(name = "role_modified_by")
     private String roleModifiedBy;
 
     @Column(name = "role_modified_date")
-    private String roleModifiedDate;
+    private LocalDateTime roleModifiedDate;
 
 //    @ManyToMany(mappedBy = "roles")
 //    private Set<UserAuthentication> users;

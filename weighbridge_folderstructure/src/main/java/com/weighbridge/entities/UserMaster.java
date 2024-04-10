@@ -7,6 +7,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.Set;
 
 @Data
@@ -66,13 +68,13 @@ public class UserMaster {
     private String userCreatedBy;
 
     @Column(name = "user_created_date")
-    private String userCreatedDate;
+    private LocalDateTime userCreatedDate;
 
     @Column(name = "user_modified_by")
     private String userModifiedBy;
 
     @Column(name = "user_modified_date")
-    private String userModifiedDate;
+    private LocalDateTime userModifiedDate;
 
 }
 

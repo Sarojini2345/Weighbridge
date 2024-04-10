@@ -7,6 +7,10 @@ import com.weighbridge.payloads.UserResponse;
 import com.weighbridge.services.UserMasterService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -23,17 +27,35 @@ public class UserMasterController {
 
     // Create new user
     @PostMapping
-    public ResponseEntity<UserMaster> createUser(@Validated @RequestBody UserRequest userRequest){
-        UserMaster savedUser = userMasterService.createUser(userRequest);
-        return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
+    public ResponseEntity<String> createUser(@Validated @RequestBody UserRequest userRequest){
+        String response = userMasterService.createUser(userRequest);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     // Get all users
     @GetMapping
-    public ResponseEntity<List<UserResponse>> getAllUsers(){
-        List<UserResponse> userLists = userMasterService.getAllUsers();
+    public ResponseEntity<List<UserResponse>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String sortField,
+            @RequestParam(defaultValue = "desc") String sortOrder) {
+
+        Pageable pageable;
+
+        if (sortField != null && !sortField.isEmpty()) {
+            Sort.Direction direction = sortOrder.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+            Sort sort = Sort.by(direction, sortField);
+            pageable = PageRequest.of(page, size, sort);
+        } else {
+            pageable = PageRequest.of(page, size);
+        }
+
+        Page<UserResponse> userPage = userMasterService.getAllUsers(pageable);
+
+        List<UserResponse> userLists = userPage.getContent();
         return ResponseEntity.ok(userLists);
     }
+
 
 //     Get single user by userId
     @GetMapping("/{userId}")

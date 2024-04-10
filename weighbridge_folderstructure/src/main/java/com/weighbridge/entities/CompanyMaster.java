@@ -6,6 +6,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -28,12 +30,12 @@ public class CompanyMaster {
     private String companyCreatedBy;
 
     @Column(name = "company_created_date")
-    private String companyCreatedDate;
+    private LocalDateTime companyCreatedDate;
 
     @Column(name = "company_modified_by")
     private String companyModifiedBy;
 
     @Column(name = "company_modified_date")
-    private String companyModifiedDate;
+    private LocalDateTime companyModifiedDate;
 
 }
