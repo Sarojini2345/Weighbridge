@@ -17,6 +17,7 @@ public class UpdateRequest {
     @NotBlank(message = "Site is required")
     private String site;
 
+
     @NotBlank(message = "Company is required")
     private String company;
 

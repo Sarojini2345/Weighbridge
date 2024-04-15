@@ -2,23 +2,23 @@ package com.weighbridge.services.impls;
 
 import com.weighbridge.dtos.SiteMasterDto;
 import com.weighbridge.entities.CompanyMaster;
-import com.weighbridge.entities.RoleMaster;
 import com.weighbridge.entities.SiteMaster;
 import com.weighbridge.exceptions.ResourceNotFoundException;
 import com.weighbridge.payloads.SiteRequest;
 import com.weighbridge.repsitories.CompanyMasterRepository;
 import com.weighbridge.repsitories.SiteMasterRepository;
 import com.weighbridge.services.SiteMasterService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,27 +28,49 @@ public class SiteMasterServiceImpl implements SiteMasterService {
     private final SiteMasterRepository siteMasterRepository;
     private final ModelMapper modelMapper;
     private final CompanyMasterRepository companyMasterRepository;
+    @Autowired
+    private HttpServletRequest httpServletRequest;
     @Override
     public SiteMasterDto createSite(SiteMasterDto siteMasterDto) {
+        SiteMaster bySiteNameAndSiteAddress = siteMasterRepository.findBySiteNameAndSiteAddress(siteMasterDto.getSiteName(), siteMasterDto.getSiteAddress());
+        if(bySiteNameAndSiteAddress!=null){
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"give proper address of the site");
+        }
         siteMasterDto.setSiteId(generateSiteId(siteMasterDto.getSiteName()));
 
         SiteMaster site = modelMapper.map(siteMasterDto, SiteMaster.class);
-
+        HttpSession session = httpServletRequest.getSession();
+        String userId = String.valueOf(session.getAttribute("userId"));
+        LocalDateTime currentDateTime = LocalDateTime.now();
+        site.setSiteCreatedBy(userId);
+        site.setSiteCreatedDate(currentDateTime);
+        site.setSiteModifiedBy(userId);
+        site.setSiteModifiedDate(currentDateTime);
         SiteMaster savedSite = siteMasterRepository.save(site);
 
         return modelMapper.map(savedSite, SiteMasterDto.class);
     }
 
-    private static String generateSiteId(String siteName) {
+    private String generateSiteId(String siteName) {
         // Extract the first three letters of the site name (or abbreviation)
         String siteAbbreviation = siteName.substring(0, Math.min(siteName.length(), 3)).toUpperCase();
 
-        // Concatenate the abbreviation and unique identifier
-        String siteId = siteAbbreviation ;
+        // Retrieve the count of existing site names that start with the same abbreviation
+        long siteCount = siteMasterRepository.countBySiteNameStartingWith(siteAbbreviation);
 
+        // Generate the site ID based on the count
+        String siteId;
+        if (siteCount > 0) {
+            // If other sites with the same abbreviation exist, append a numeric suffix
+            siteId = String.format("%s%02d", siteAbbreviation, siteCount + 1);
+        } else {
+            // Otherwise, use the abbreviation without a suffix
+            siteId = siteAbbreviation+ "01";;
+        }
 
         return siteId;
     }
+
 
     @Override
     public List<SiteMasterDto> getAllSite() {
@@ -67,28 +89,32 @@ public class SiteMasterServiceImpl implements SiteMasterService {
 
         Set<String> listOfSites = siteRequest.getSites();
         Set<SiteMaster> sites = new HashSet<>();
-        if (listOfSites != null) {
-            listOfSites.forEach(siteName -> {
-                SiteMaster site = siteMasterRepository.findBySiteName(siteName);
+        if(listOfSites != null) {
+            for (String siteInfo : listOfSites) {
+                // Split the siteInfo to separate site name and site address
+                String[] siteInfoParts = siteInfo.split(",", 2);
+                if (siteInfoParts.length != 2) {
+                    throw new IllegalArgumentException("Invalid format for site info: " + siteInfo);
+                }
+                String siteName = siteInfoParts[0].trim();
+                String siteAddress = siteInfoParts[1].trim();
 
-                if (site != null) {
-
-                        site.setCompany(company);
-                        siteMasterRepository.save(site);
-                    }
-                    else{
-                        throw new ResponseStatusException(HttpStatus.CONFLICT,"Company with site name already exist");
-                    }
-
-            });
+                // Check if a site with the same name and address exists
+                SiteMaster existingSites = siteMasterRepository.findBySiteNameAndSiteAddress(siteName, siteAddress);
+                if (existingSites!=null) {
+                    // Associate the company with the existing site(s)
+                   existingSites.setCompany(company);
+                    siteMasterRepository.save(existingSites);
+                }
+            }
         }
         return "Site Assigned to company successful";
     }
 
     @Override
-    public List<String> findAllByCompanySites(String companyName) {
+    public List<Map<String, String>> findAllByCompanySites(String companyName) {
         CompanyMaster company=companyMasterRepository.findByCompanyName(companyName);
-        List<String> allByCompanyId = siteMasterRepository.findAllByCompanyId(company.getCompanyId());
+        List<Map<String, String>> allByCompanyId = siteMasterRepository.findAllByCompanyId(company.getCompanyId());
         return allByCompanyId;
     }
 }

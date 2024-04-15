@@ -11,4 +11,6 @@ public interface CompanyMasterRepository extends JpaRepository<CompanyMaster, St
 
     @Query("SELECT c.companyName FROM CompanyMaster c")
     List<String> findAllCompanyListName();
+
+    long countByCompanyNameStartingWith(String companyAbbreviation);
 }

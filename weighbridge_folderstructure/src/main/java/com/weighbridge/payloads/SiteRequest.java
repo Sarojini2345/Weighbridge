@@ -10,4 +10,5 @@ import java.util.Set;
 public class SiteRequest {
     private String companyName;
     private Set<String> sites;
+
 }

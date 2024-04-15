@@ -1,5 +1,6 @@
 package com.weighbridge.controllers;
 
+import com.weighbridge.payloads.LoginResponse;
 import com.weighbridge.payloads.UpdateRequest;
 import com.weighbridge.payloads.UserRequest;
 import com.weighbridge.entities.UserMaster;
@@ -78,5 +79,7 @@ public class UserMasterController {
         UserResponse response = userMasterService.updateUserById(updateRequest, userId);
         return ResponseEntity.ok(response);
     }
+
+
 
 }

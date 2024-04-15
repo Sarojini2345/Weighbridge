@@ -15,10 +15,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "user_master", uniqueConstraints = {
-        @UniqueConstraint(columnNames = "email_id", name = "unique_email_id"),
-        @UniqueConstraint(columnNames = "contact_no", name = "unique_contact_no")
-})
+@Table(name = "user_master")
 public class UserMaster {
 
     @Id

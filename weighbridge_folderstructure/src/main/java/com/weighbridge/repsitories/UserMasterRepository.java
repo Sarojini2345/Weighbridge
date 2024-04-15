@@ -12,16 +12,10 @@ import java.util.Optional;
 
 @Repository
 public interface UserMasterRepository extends JpaRepository<UserMaster, String> {
-    boolean existsByUserId(String userId);
 
     Page<UserMaster> findAllByOrderByUserModifiedByDesc(Pageable pageable);
 
-    boolean existsByUserEmailId(String userEmailId);
+    boolean existsByUserEmailIdOrUserContactNo(String emailId, String contactNo);
 
-    boolean existsByUserContactNo(String contactNo);
-
-    boolean existsByUserContactNoAndUserIdNot(String contactNo, String userId);
-
-
-    boolean existsByUserEmailIdAndUserIdNot(String emailId, String userId);
+    boolean existsByUserEmailIdAndUserIdNotOrUserContactNoAndUserIdNot(String emailId, String userId, String contactNo, String userId1);
 }
