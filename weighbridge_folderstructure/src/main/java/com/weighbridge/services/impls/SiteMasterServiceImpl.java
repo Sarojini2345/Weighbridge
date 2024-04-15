@@ -30,11 +30,12 @@ public class SiteMasterServiceImpl implements SiteMasterService {
     private final CompanyMasterRepository companyMasterRepository;
     @Autowired
     private HttpServletRequest httpServletRequest;
+
     @Override
     public SiteMasterDto createSite(SiteMasterDto siteMasterDto) {
         SiteMaster bySiteNameAndSiteAddress = siteMasterRepository.findBySiteNameAndSiteAddress(siteMasterDto.getSiteName(), siteMasterDto.getSiteAddress());
-        if(bySiteNameAndSiteAddress!=null){
-            throw new ResponseStatusException(HttpStatus.CONFLICT,"give proper address of the site");
+        if (bySiteNameAndSiteAddress != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "give proper address of the site");
         }
         siteMasterDto.setSiteId(generateSiteId(siteMasterDto.getSiteName()));
 
@@ -65,7 +66,8 @@ public class SiteMasterServiceImpl implements SiteMasterService {
             siteId = String.format("%s%02d", siteAbbreviation, siteCount + 1);
         } else {
             // Otherwise, use the abbreviation without a suffix
-            siteId = siteAbbreviation+ "01";;
+            siteId = siteAbbreviation + "01";
+            ;
         }
 
         return siteId;
@@ -80,40 +82,51 @@ public class SiteMasterServiceImpl implements SiteMasterService {
 
     @Override
     public String assignSite(SiteRequest siteRequest) {
-
         CompanyMaster company = companyMasterRepository.findByCompanyName(siteRequest.getCompanyName());
-        if(company == null){
+        if (company == null) {
             throw new ResourceNotFoundException("Company", "companyName", siteRequest.getCompanyName());
         }
 
-
         Set<String> listOfSites = siteRequest.getSites();
-        Set<SiteMaster> sites = new HashSet<>();
-        if(listOfSites != null) {
+        if (listOfSites.size() > 0) {
             for (String siteInfo : listOfSites) {
-                // Split the siteInfo to separate site name and site address
-                String[] siteInfoParts = siteInfo.split(",", 2);
-                if (siteInfoParts.length != 2) {
-                    throw new IllegalArgumentException("Invalid format for site info: " + siteInfo);
-                }
-                String siteName = siteInfoParts[0].trim();
-                String siteAddress = siteInfoParts[1].trim();
+                try {
+                    // Split the siteInfo to separate site name and site address
+                    String[] siteInfoParts = siteInfo.split(",", 2);
+                    if (siteInfoParts.length != 2) {
+                        throw new IllegalArgumentException("Invalid format for site info: " + siteInfo);
+                    }
+                    String siteName = siteInfoParts[0].trim();
+                    String siteAddress = siteInfoParts[1].trim();
 
-                // Check if a site with the same name and address exists
-                SiteMaster existingSites = siteMasterRepository.findBySiteNameAndSiteAddress(siteName, siteAddress);
-                if (existingSites!=null) {
-                    // Associate the company with the existing site(s)
-                   existingSites.setCompany(company);
-                    siteMasterRepository.save(existingSites);
+                    // Check if a site with the same name and address exists
+                    SiteMaster existingSite = siteMasterRepository.findBySiteNameAndSiteAddress(siteName, siteAddress);
+                    System.out.println("existing site" + existingSite);
+                    if (existingSite != null) {
+                        // Associate the company with the existing site(s)
+                        existingSite.setCompany(company);
+                        siteMasterRepository.save(existingSite);
+                    } else {
+                        throw new ResourceNotFoundException("Entered site is not exist!");
+                    }
+                } catch (IllegalArgumentException e) {
+                    // Handle invalid site info format
+                    return "Error: " + e.getMessage();
+                } catch (Exception e) {
+                    // Handle other exceptions
+                    return "Error assigning site: " + e.getMessage();
                 }
             }
+            return "Site(s) assigned to company successfully";
+        } else {
+            return "No sites provided to assign to the company";
         }
-        return "Site Assigned to company successful";
     }
+
 
     @Override
     public List<Map<String, String>> findAllByCompanySites(String companyName) {
-        CompanyMaster company=companyMasterRepository.findByCompanyName(companyName);
+        CompanyMaster company = companyMasterRepository.findByCompanyName(companyName);
         List<Map<String, String>> allByCompanyId = siteMasterRepository.findAllByCompanyId(company.getCompanyId());
         return allByCompanyId;
     }

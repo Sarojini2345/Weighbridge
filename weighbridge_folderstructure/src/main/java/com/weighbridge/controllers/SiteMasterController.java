@@ -42,6 +42,6 @@ public class SiteMasterController {
     @GetMapping("/company/{companyName}")
     public ResponseEntity<List<Map<String, String>>> GetAllSitesOfCompany(@PathVariable String companyName){
         List<Map<String, String>> allByCompanySites = siteMasterService.findAllByCompanySites(companyName);
-        return ResponseEntity.ok(allByCompanySites);
+        return null;
     }
 }
