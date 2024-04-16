@@ -75,9 +75,9 @@ public class UserMasterController {
 
     // Update user by userId
     @PutMapping("/updateUser/{userId}")
-    public ResponseEntity<UserResponse> updateUserById(@Validated @RequestBody UpdateRequest updateRequest, @PathVariable String userId){
+    public ResponseEntity<UserResponse> updateUserById(@Validated @RequestBody UpdateRequest updateRequest, @PathVariable String userId,HttpSession httpSession){
 
-        UserResponse response = userMasterService.updateUserById(updateRequest, userId);
+        UserResponse response = userMasterService.updateUserById(updateRequest, userId,httpSession);
         return ResponseEntity.ok(response);
     }
 

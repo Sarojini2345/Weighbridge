@@ -19,7 +19,7 @@ public interface UserMasterService {
 
     String deleteUserById(String userId);
 
-    UserResponse updateUserById(UpdateRequest updateRequest, String userId);
+    UserResponse updateUserById(UpdateRequest updateRequest, String userId,HttpSession session);
 
 
 

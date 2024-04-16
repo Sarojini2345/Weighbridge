@@ -50,7 +50,6 @@ public class UserMasterServiceImpl implements UserMasterService {
     HttpServletRequest request;
 
 
-
     @Autowired
     EmailService emailService;
 
@@ -123,7 +122,7 @@ public class UserMasterServiceImpl implements UserMasterService {
         try {
             userMasterRepository.save(userMaster);
             UserAuthentication savedUser = userAuthenticationRepository.save(userAuthentication);
-//            emailService.sendCredentials(userRequest.getEmailId(), userId, savedUser.getUserPassword());
+            emailService.sendCredentials(userRequest.getEmailId(), userId, savedUser.getUserPassword());
 
             return "User is created successfully with userId : " + userId;
         } catch (DataAccessException e) {
@@ -131,7 +130,6 @@ public class UserMasterServiceImpl implements UserMasterService {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Database access error occurred", e);
         }
     }
-
 
 
     public synchronized String generateUserId(String companyId, String siteId) {
@@ -181,7 +179,7 @@ public class UserMasterServiceImpl implements UserMasterService {
             userResponse.setCompany(company != null ? company.getCompanyName() : null);
 
             SiteMaster site = userMaster.getSite();
-            String siteAddress = site.getSiteName()+","+site.getSiteAddress();
+            String siteAddress = site.getSiteName() + "," + site.getSiteAddress();
             userResponse.setSite(site != null ? siteAddress : null);
 
             Set<RoleMaster> roleMasters = userAuthenticationRepository.findRolesByUserId(userMaster.getUserId());
@@ -212,7 +210,7 @@ public class UserMasterServiceImpl implements UserMasterService {
 
         SiteMaster site = userMaster.getSite();
         //combine the sitename with address
-        String siteAddress = site.getSiteName()+","+site.getSiteAddress();
+        String siteAddress = site.getSiteName() + "," + site.getSiteAddress();
 
         userResponse.setSite(siteAddress);
 
@@ -238,8 +236,7 @@ public class UserMasterServiceImpl implements UserMasterService {
     }
 
     @Override
-    public UserResponse updateUserById(UpdateRequest updateRequest, String userId) {
-
+    public UserResponse updateUserById(UpdateRequest updateRequest, String userId, HttpSession session) {
         // Fetch the existing user from the database
         UserMaster userMaster = userMasterRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "userId", userId));
@@ -252,8 +249,7 @@ public class UserMasterServiceImpl implements UserMasterService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "EmailId and ContactNo is exists with another user");
         }
 
-        // Get company and site id from their names
-        // Fetch company and site details in batches
+        // Fetch company and site details
         String[] siteInfoParts = updateRequest.getSite().split(",", 2);
         if (siteInfoParts.length != 2) {
             throw new IllegalArgumentException("Invalid format for site info: " + updateRequest.getSite());
@@ -264,7 +260,6 @@ public class UserMasterServiceImpl implements UserMasterService {
         SiteMaster siteMaster = siteMasterRepository.findBySiteNameAndSiteAddress(siteName, siteAddress);
         CompanyMaster companyMaster = companyMasterRepository.findByCompanyName(updateRequest.getCompany());
 
-
         // Set userMaster object properties from the request
         userMaster.setCompany(companyMaster);
         userMaster.setSite(siteMaster);
@@ -274,8 +269,7 @@ public class UserMasterServiceImpl implements UserMasterService {
         userMaster.setUserMiddleName(updateRequest.getMiddleName());
         userMaster.setUserLastName(updateRequest.getLastName());
 
-        // Set user creation/modification details
-        HttpSession session = request.getSession();
+        // Set user modification details
         String modifiedUser = String.valueOf(session.getAttribute("userId"));
         LocalDateTime currentDateTime = LocalDateTime.now();
         userMaster.setUserModifiedBy(modifiedUser);
@@ -284,34 +278,44 @@ public class UserMasterServiceImpl implements UserMasterService {
         // Fetch the user authentication details
         UserAuthentication userAuthentication = userAuthenticationRepository.findByUserId(userId);
 
-        Set<String> setOfRoles = updateRequest.getRole();
-        Set<RoleMaster> updatedRoles = new HashSet<>(userAuthentication.getRoles()); // Copy current roles
+        // Update user roles
+        Set<RoleMaster> updatedRoles = updateRoles(userAuthentication, updateRequest.getRole());
 
-        if (setOfRoles != null) {
-            // Fetch all roles
-            Iterable<RoleMaster> roleMasters = roleMasterRepository.findAllByRoleNameIn(setOfRoles);
-            Map<String, RoleMaster> roleMap = new HashMap<>();
-            roleMasters.forEach(role -> roleMap.put(role.getRoleName(), role));
-
-            setOfRoles.forEach(roleName -> {
-                RoleMaster roleMaster = roleMap.get(roleName);
-                if (roleMaster != null && !updatedRoles.contains(roleMaster)) {
-                    updatedRoles.add(roleMaster);
-                } else if (roleMaster == null) {
-                    throw new ResourceNotFoundException("Role", "roleName", roleName);
-                }
-            });
-
-            // Remove roles that are not in the request
-            updatedRoles.removeIf(role -> !setOfRoles.contains(role.getRoleName()));
-        }
-
-// Set the updated roles to the userAuthentication object
+        // Set the updated roles to the userAuthentication object
         userAuthentication.setRoles(updatedRoles);
+
         try {
             // Save updated user and user authentication
             UserMaster updatedUser = userMasterRepository.save(userMaster);
             UserAuthentication updatedAuthUser = userAuthenticationRepository.save(userAuthentication);
+
+            // Add update to user history
+            UserHistory userHistory = userHistoryRepository.findByUserId(userId);
+            if (userHistory == null) {
+                userHistory = new UserHistory();
+                userHistory.setUserId(userId);
+            }
+            UserHistoryUpdate historyUpdate = new UserHistoryUpdate();
+
+            // Convert Set<String> to comma-separated String
+            String roles = String.join(",", getRoleNames(updatedAuthUser.getRoles()));
+
+
+            // Set the roles String to the UserHistoryUpdate
+            historyUpdate.setRoles(roles);
+            System.out.println(roles);
+
+            historyUpdate.setModifiedDate(currentDateTime);
+            historyUpdate.setModifiedBy(modifiedUser);
+            historyUpdate.setSite(siteName + ", " + siteAddress);
+            historyUpdate.setCreatedDate(updatedUser.getUserCreatedDate());
+            historyUpdate.setCreatedBy(updatedUser.getUserCreatedBy());
+            if (userHistory.getUpdates() == null) {
+                userHistory.setUpdates(new ArrayList<>());
+            }
+            userHistory.getUpdates().add(historyUpdate);
+            userHistoryRepository.save(userHistory);
+
 
             // Prepare the response object
             UserResponse userResponse = new UserResponse();
@@ -323,13 +327,8 @@ public class UserMasterServiceImpl implements UserMasterService {
             userResponse.setContactNo(updatedUser.getUserContactNo());
             userResponse.setCompany(updatedUser.getCompany().getCompanyName());
             userResponse.setSite(updatedUser.getSite().getSiteName());
-            // Set roles in the response
-            Set<RoleMaster> roleMasters = updatedAuthUser.getRoles();
-            // Convert Set<RoleMaster> to Set<String> using Java Streams
-            Set<String> roleNames = roleMasters.stream()
-                    .map(RoleMaster::getRoleName)
-                    .collect(Collectors.toSet());
-            userResponse.setRole(roleNames);
+            userResponse.setRole(getRoleNames(updatedAuthUser.getRoles()));
+//            userResponse.setStatus(updatedUser.getUserStatus());
 
             return userResponse;
         } catch (DataAccessException e) {
@@ -339,4 +338,28 @@ public class UserMasterServiceImpl implements UserMasterService {
             throw new ResourceCreationException("Failed to Update User", e);
         }
     }
+
+    private Set<RoleMaster> updateRoles(UserAuthentication userAuthentication, Set<String> updatedRoleNames) {
+        Set<RoleMaster> updatedRoles = new HashSet<>();
+        if (updatedRoleNames != null) {
+            Iterable<RoleMaster> roleMasters = roleMasterRepository.findAllByRoleNameIn(updatedRoleNames);
+            Map<String, RoleMaster> roleMap = new HashMap<>();
+            roleMasters.forEach(role -> roleMap.put(role.getRoleName(), role));
+
+            updatedRoleNames.forEach(roleName -> {
+                RoleMaster roleMaster = roleMap.get(roleName);
+                if (roleMaster != null) {
+                    updatedRoles.add(roleMaster);
+                } else {
+                    throw new ResourceNotFoundException("Role", "roleName", roleName);
+                }
+            });
+        }
+        return updatedRoles;
+    }
+
+    private Set<String> getRoleNames(Set<RoleMaster> roles) {
+        return roles.stream().map(RoleMaster::getRoleName).collect(Collectors.toSet());
+    }
+
 }
