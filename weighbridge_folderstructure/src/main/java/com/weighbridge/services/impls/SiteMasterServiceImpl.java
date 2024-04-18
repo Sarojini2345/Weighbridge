@@ -82,52 +82,71 @@ public class SiteMasterServiceImpl implements SiteMasterService {
 
     @Override
     public String assignSite(SiteRequest siteRequest) {
+        // Find the company by name
         CompanyMaster company = companyMasterRepository.findByCompanyName(siteRequest.getCompanyName());
         if (company == null) {
             throw new ResourceNotFoundException("Company", "companyName", siteRequest.getCompanyName());
         }
 
-        Set<String> listOfSites = siteRequest.getSites();
-        if (listOfSites.size() > 0) {
-            for (String siteInfo : listOfSites) {
-                try {
-                    // Split the siteInfo to separate site name and site address
-                    String[] siteInfoParts = siteInfo.split(",", 2);
-                    if (siteInfoParts.length != 2) {
-                        throw new IllegalArgumentException("Invalid format for site info: " + siteInfo);
-                    }
-                    String siteName = siteInfoParts[0].trim();
-                    String siteAddress = siteInfoParts[1].trim();
-
-                    // Check if a site with the same name and address exists
-                    SiteMaster existingSite = siteMasterRepository.findBySiteNameAndSiteAddress(siteName, siteAddress);
-                    System.out.println("existing site" + existingSite);
-                    if (existingSite != null) {
-                        // Associate the company with the existing site(s)
+        String siteName = siteRequest.getSiteName().trim();
+        String siteAddress = siteRequest.getSiteAddress().trim();
+        try {
+            if (siteName != null && siteAddress != null) {
+                // Check if a site with the same name and address exists
+                SiteMaster existingSite = siteMasterRepository.findBySiteNameAndSiteAddress(siteName, siteAddress);
+                if (existingSite != null) {
+                    // Associate the company with the existing site(s)
+                    if(!existingSite.getCompany().getCompanyId().equals(company.getCompanyId())) {
                         existingSite.setCompany(company);
                         siteMasterRepository.save(existingSite);
-                    } else {
-                        throw new ResourceNotFoundException("Entered site is not exist!");
+                        return "Site(s) assigned to company successfully";
                     }
-                } catch (IllegalArgumentException e) {
-                    // Handle invalid site info format
-                    return "Error: " + e.getMessage();
-                } catch (Exception e) {
-                    // Handle other exceptions
-                    return "Error assigning site: " + e.getMessage();
+                    else {
+                        return "company already assigned to this site";
+                    }
+
+                } else {
+                    // Create a new site if it doesn't exist
+                    SiteMaster newSite = new SiteMaster();
+                    HttpSession session = httpServletRequest.getSession();
+                    String userId = String.valueOf(session.getAttribute("userId"));
+                    LocalDateTime currentDateTime = LocalDateTime.now();
+                    newSite.setSiteId(generateSiteId(siteRequest.getSiteName()));
+                    newSite.setSiteName(siteName);
+                    newSite.setSiteAddress(siteAddress);
+                    newSite.setCompany(company);
+                    newSite.setSiteCreatedBy(userId);
+                    newSite.setSiteCreatedDate(currentDateTime);
+                    newSite.setSiteModifiedBy(userId);
+                    newSite.setSiteModifiedDate(currentDateTime);
+                    siteMasterRepository.save(newSite);
+                    return "Site(s) assigned to company successfully";
                 }
+
             }
-            return "Site(s) assigned to company successfully";
-        } else {
-            return "No sites provided to assign to the company";
+            else{
+                return "Site and company are null";
+            }
+        } catch (IllegalArgumentException e) {
+            // Handle invalid site info format
+            return "Error: " + e.getMessage();
+        } catch (Exception e) {
+            // Handle other exceptions
+            return "Error assigning site: " + e.getMessage();
         }
     }
 
 
+
     @Override
     public List<Map<String, String>> findAllByCompanySites(String companyName) {
-        CompanyMaster company = companyMasterRepository.findByCompanyName(companyName);
-        List<Map<String, String>> allByCompanyId = siteMasterRepository.findAllByCompanyId(company.getCompanyId());
+        CompanyMaster companyMaster;
+
+        companyMaster = companyMasterRepository.findByCompanyName(companyName);
+        if(companyMaster==null){
+            throw new ResourceNotFoundException("company does not exist");
+        }
+        List<Map<String, String>> allByCompanyId = siteMasterRepository.findAllByCompanyId(companyMaster.getCompanyId());
         return allByCompanyId;
     }
 }

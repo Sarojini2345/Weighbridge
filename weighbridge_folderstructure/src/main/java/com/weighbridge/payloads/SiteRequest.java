@@ -8,7 +8,9 @@ import java.util.Set;
 
 @Data
 public class SiteRequest {
+    private String siteId;
     private String companyName;
-    private Set<String> sites;
+    private String siteName;
+    private String siteAddress;
 
 }

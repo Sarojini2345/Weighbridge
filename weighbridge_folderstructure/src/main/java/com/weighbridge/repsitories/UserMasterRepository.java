@@ -15,7 +15,7 @@ import java.util.Optional;
 @Repository
 public interface UserMasterRepository extends JpaRepository<UserMaster, String> {
 
-    Page<UserMaster> findAllByOrderByUserModifiedByDesc(Pageable pageable);
+    Page<UserMaster> findAll(Pageable pageable);
 
     boolean existsByUserEmailIdOrUserContactNo(String emailId, String contactNo);
 

@@ -62,27 +62,30 @@ public class UserMasterServiceImpl implements UserMasterService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email Id or Contact No is already taken");
         }
 
-        // Fetch company and site details
-        String[] siteInfoParts = userRequest.getSite().split(",", 2);
-        if (siteInfoParts.length != 2) {
-            throw new IllegalArgumentException("Invalid format for site info: " + userRequest.getSite());
-        }
+        // Fetch company and site details if provided
 
-        String siteName = siteInfoParts[0].trim();
-        String siteAddress = siteInfoParts[1].trim();
-        SiteMaster siteMaster = siteMasterRepository.findBySiteNameAndSiteAddress(siteName, siteAddress);
-        if (siteMaster == null) {
-            throw new ResourceNotFoundException("SiteMaster", "siteName", siteName);
-        }
 
-        CompanyMaster companyMaster = companyMasterRepository.findByCompanyName(userRequest.getCompany());
-        if (companyMaster == null) {
-            throw new ResourceNotFoundException("CompanyMaster", "companyName", userRequest.getCompany());
-        }
+           CompanyMaster companyMaster = companyMasterRepository.findByCompanyName(userRequest.getCompany());
+            if (companyMaster == null) {
+                throw new ResourceNotFoundException("CompanyMaster", "companyName", userRequest.getCompany());
+            }
+
+
+            String[] siteInfoParts = userRequest.getSite().split(",", 2);
+            if (siteInfoParts.length != 2) {
+                throw new IllegalArgumentException("Invalid format for site info: " + userRequest.getSite());
+            }
+            String siteName = siteInfoParts[0].trim();
+            String siteAddress = siteInfoParts[1].trim();
+            SiteMaster siteMaster = siteMasterRepository.findBySiteNameAndSiteAddress(siteName, siteAddress);
+            if (siteMaster == null) {
+                throw new ResourceNotFoundException("SiteMaster", "siteName", siteName);
+            }
+
 
         // Create UserMaster instance and set properties
         UserMaster userMaster = new UserMaster();
-        String userId = generateUserId(companyMaster.getCompanyId(), siteMaster.getSiteId());
+        String userId = generateUserId(companyMaster.getCompanyId(),siteMaster.getSiteId());
         userMaster.setUserId(userId);
         userMaster.setCompany(companyMaster);
         userMaster.setSite(siteMaster);
@@ -134,20 +137,22 @@ public class UserMasterServiceImpl implements UserMasterService {
 
     public synchronized String generateUserId(String companyId, String siteId) {
         // Retrieve the current value of the unique identifier from the database for the given company and site
-        SequenceGenerator sequenceGenerator = sequenceGeneratorRepository.findByCompanyIdAndSiteId(companyId, siteId).orElse(new SequenceGenerator(companyId, siteId, 1)); // Initialize to 1 if not found
-        int uniqueIdentifier = sequenceGenerator.getNextValue();
 
-        // Concatenate company ID, site ID, and unique identifier
-        String userId = companyId + "_" + siteId + "_" + String.format("%02d", uniqueIdentifier);
+            SequenceGenerator sequenceGenerator = sequenceGeneratorRepository.findByCompanyIdAndSiteId(companyId, siteId).orElse(new SequenceGenerator(companyId, siteId, 1)); // Initialize to 1 if not found
+            int uniqueIdentifier = sequenceGenerator.getNextValue();
 
-        // Increment the unique identifier
-        uniqueIdentifier = (uniqueIdentifier + 1) % 1000; // Ensure it's always 3 digits
+            // Concatenate company ID, site ID, and unique identifier
+            String userId = companyId + "_" + siteId + "_" + String.format("%02d", uniqueIdentifier);
 
-        // Update the unique identifier value in the database
-        sequenceGenerator.setNextValue(uniqueIdentifier);
-        sequenceGeneratorRepository.save(sequenceGenerator);
+            // Increment the unique identifier
+            uniqueIdentifier = (uniqueIdentifier + 1) % 1000; // Ensure it's always 3 digits
 
-        return userId;
+            // Update the unique identifier value in the database
+            sequenceGenerator.setNextValue(uniqueIdentifier);
+            sequenceGeneratorRepository.save(sequenceGenerator);
+
+            return userId;
+
     }
 
 
@@ -164,7 +169,9 @@ public class UserMasterServiceImpl implements UserMasterService {
 
     @Override
     public Page<UserResponse> getAllUsers(Pageable pageable) {
-        Page<UserMaster> userPage = userMasterRepository.findAllByOrderByUserModifiedByDesc(pageable);
+        System.out.println("pageable = " + pageable);
+        Page<UserMaster> userPage = userMasterRepository.findAll(pageable);
+        System.out.println(userPage);
 
         Page<UserResponse> responsePage = userPage.map(userMaster -> {
             UserResponse userResponse = new UserResponse();
@@ -175,9 +182,10 @@ public class UserMasterServiceImpl implements UserMasterService {
             userResponse.setEmailId(userMaster.getUserEmailId());
             userResponse.setContactNo(userMaster.getUserContactNo());
 
+            System.out.println("-----------1----------");
             CompanyMaster company = userMaster.getCompany();
             userResponse.setCompany(company != null ? company.getCompanyName() : null);
-
+            System.out.println("-----------2----------");
             SiteMaster site = userMaster.getSite();
             String siteAddress = site.getSiteName() + "," + site.getSiteAddress();
             userResponse.setSite(site != null ? siteAddress : null);

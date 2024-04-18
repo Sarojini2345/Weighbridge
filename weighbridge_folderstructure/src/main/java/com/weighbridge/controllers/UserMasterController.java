@@ -37,15 +37,17 @@ public class UserMasterController {
     // Get all users
     @GetMapping
     public ResponseEntity<List<UserResponse>> getAllUsers(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String sortField,
-            @RequestParam(defaultValue = "desc") String sortOrder) {
+            @RequestParam(defaultValue = "0", required = false) int page,
+            @RequestParam(defaultValue = "10", required = false) int size,
+            @RequestParam(required = false, defaultValue = "userModifiedDate") String sortField,
+            @RequestParam(defaultValue = "desc", required = false) String sortOrder) {
 
         Pageable pageable;
 
+        System.out.println("hjsadljfhj"+sortField+" ordre"+sortOrder);
         if (sortField != null && !sortField.isEmpty()) {
             Sort.Direction direction = sortOrder.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+            System.out.println("direction "+direction);
             Sort sort = Sort.by(direction, sortField);
             pageable = PageRequest.of(page, size, sort);
         } else {

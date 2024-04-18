@@ -24,12 +24,12 @@ public class UserMaster {
     @Size(min=5, max = 15, message = "UserId id must be between 5 and 15 characters")
     private String userId;
 
-    @NotNull(message = "Site is required")
+    //@NotNull(message = "Site is required")
     @ManyToOne
     @JoinColumn(name = "site_id", referencedColumnName = "  site_id")
     private SiteMaster site;
 
-    @NotNull(message = "Company is required")
+   // @NotNull(message = "Company is required")
     @ManyToOne
     @JoinColumn(name = "company_id", referencedColumnName = "company_id")
     private CompanyMaster company;

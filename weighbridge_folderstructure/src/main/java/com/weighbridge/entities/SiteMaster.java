@@ -46,5 +46,4 @@ public class SiteMaster {
 
     @Column(name = "site_modified_date")
     private LocalDateTime siteModifiedDate;
-
 }
