@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -24,9 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -41,71 +40,53 @@ public class UserMasterServiceImpl implements UserMasterService {
     private final SiteMasterRepository siteMasterRepository;
     private final RoleMasterRepository roleMasterRepository;
     private final UserAuthenticationRepository userAuthenticationRepository;
-
-
     private final SequenceGeneratorRepository sequenceGeneratorRepository;
+    private final UserHistoryRepository userHistoryRepository;
 
-
+    @Value("${app.default-password}")
+    private String defaultPassword;
 
     @Autowired
     HttpServletRequest request;
 
+
+    @Autowired
+    EmailService emailService;
+
+
+    // TODO put validation for company and site, if site does not belong to company than it shouldn't create
     @Override
-    public String createUser(UserRequest userRequest) {
-
-        CompanyMaster companyMaster = null;
-        SiteMaster siteMaster = null;
-
-        try {
-            // Check if the userId already exists in the UserMaster table
-            boolean userEmailIdExistsInUserMaster = userMasterRepository.existsByUserEmailId(userRequest.getEmailId());
-            if (userEmailIdExistsInUserMaster) {
-                // If userId exists, throw a BadRequest exception
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email Id is already taken");
-            }
-            boolean userContactExistsInUserMaster = userMasterRepository.existsByUserContactNo(userRequest.getContactNo());
-            if (userContactExistsInUserMaster) {
-                // If userId exists, throw a BadRequest exception
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Contact No is already taken");
-            }
-
-            // Find the company by name in the CompanyMaster table
-            companyMaster = companyMasterRepository.findByCompanyName(userRequest.getCompany());
-            if (companyMaster == null) {
-                // If company is not found, throw a ResourceNotFoundException
-                throw new ResourceNotFoundException("Company", "name", userRequest.getCompany());
-            }
-
-            // Find the site by name in the SiteMaster table
-            siteMaster = siteMasterRepository.findBySiteName(userRequest.getSite());
-            if (siteMaster == null) {
-                // If site is not found, throw a ResourceNotFoundException
-                throw new ResourceNotFoundException("CompanySite", "name", userRequest.getSite());
-            }
-
-
-
-//            roleMaster = roleMasterRepository.findByRoleName(userRequest.getRole());
-//            if(roleMaster == null){
-//                throw new ResourceNotFoundException("Role", "roleName", userRequest.getRole());
-//            }
-
-            // Check if the userId exists in the UserAuthentication table
-            boolean userIdExistsInUserAuthentication = userAuthenticationRepository.existsByUserId(userRequest.getUserId());
-            if (userIdExistsInUserAuthentication) {
-                // If userId exists, throw a BadRequest exception
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "UserId is already taken");
-            }
-
-        } catch (DataAccessException e) {
-            // Catch any database access exceptions and throw an InternalServerError exception
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Database access error occurred", e);
+    public String createUser(UserRequest userRequest, HttpSession session) {
+        // Check if email or contact number already exists
+        if (userMasterRepository.existsByUserEmailIdOrUserContactNo(userRequest.getEmailId(), userRequest.getContactNo())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email Id or Contact No is already taken");
         }
 
-        // Create a new UserMaster instance and set its properties from the request
+        // Fetch company and site details if provided
+
+
+           CompanyMaster companyMaster = companyMasterRepository.findByCompanyName(userRequest.getCompany());
+            if (companyMaster == null) {
+                throw new ResourceNotFoundException("CompanyMaster", "companyName", userRequest.getCompany());
+            }
+
+
+            String[] siteInfoParts = userRequest.getSite().split(",", 2);
+            if (siteInfoParts.length != 2) {
+                throw new IllegalArgumentException("Invalid format for site info: " + userRequest.getSite());
+            }
+            String siteName = siteInfoParts[0].trim();
+            String siteAddress = siteInfoParts[1].trim();
+            SiteMaster siteMaster = siteMasterRepository.findBySiteNameAndSiteAddress(siteName, siteAddress);
+            if (siteMaster == null) {
+                throw new ResourceNotFoundException("SiteMaster", "siteName", siteName);
+            }
+
+
+        // Create UserMaster instance and set properties
         UserMaster userMaster = new UserMaster();
-        String str = generateUserId(companyMaster.getCompanyId(), siteMaster.getSiteId());
-        userMaster.setUserId(str);
+        String userId = generateUserId(companyMaster.getCompanyId(),siteMaster.getSiteId());
+        userMaster.setUserId(userId);
         userMaster.setCompany(companyMaster);
         userMaster.setSite(siteMaster);
         userMaster.setUserEmailId(userRequest.getEmailId());
@@ -113,20 +94,19 @@ public class UserMasterServiceImpl implements UserMasterService {
         userMaster.setUserFirstName(userRequest.getFirstName());
         userMaster.setUserMiddleName(userRequest.getMiddleName());
         userMaster.setUserLastName(userRequest.getLastName());
-        HttpSession session = request.getSession();
-        userMaster.setUserCreatedBy(String.valueOf(session.getAttribute("userId")));
-        userMaster.setUserCreatedDate(LocalDateTime.now());
-        userMaster.setUserModifiedBy(String.valueOf(session.getAttribute("userId")));
-        userMaster.setUserModifiedDate(LocalDateTime.now());
 
-        // Create a new UserAuthentication instance and set its properties
+        LocalDateTime currentDateTime = LocalDateTime.now();
+        String createdBy = session.getAttribute("userId").toString(); // Assuming the user creation is done by the current session user
+        userMaster.setUserCreatedBy(createdBy);
+        userMaster.setUserCreatedDate(currentDateTime);
+        userMaster.setUserModifiedBy(createdBy);
+        userMaster.setUserModifiedDate(currentDateTime);
+
+        // Create UserAuthentication instance and set properties
         UserAuthentication userAuthentication = new UserAuthentication();
-        userAuthentication.setUserId(str);
-        userAuthentication.setUserPassword(userRequest.getPassword());
-
+        userAuthentication.setUserId(userId);
         Set<String> setOfRoles = userRequest.getRole();
         Set<RoleMaster> roles = new HashSet<>();
-
         if (setOfRoles != null) {
             setOfRoles.forEach(roleName -> {
                 RoleMaster roleMaster = roleMasterRepository.findByRoleName(roleName);
@@ -139,42 +119,40 @@ public class UserMasterServiceImpl implements UserMasterService {
             });
         }
         userAuthentication.setRoles(roles);
-        log.info(String.valueOf(userMaster));
+        userAuthentication.setUserPassword(defaultPassword);
 
-
+        // Save user and user authentication
         try {
-            // Save user to the UserMaster table
-            UserMaster savedUser = userMasterRepository.save(userMaster);
+            userMasterRepository.save(userMaster);
+            UserAuthentication savedUser = userAuthenticationRepository.save(userAuthentication);
+            emailService.sendCredentials(userRequest.getEmailId(), userId, savedUser.getUserPassword());
 
-            // Save the user authentication details to the UserAuthentication table
-            userAuthenticationRepository.save(userAuthentication);
-
-            // Return the saved user object
-            return "User is created successfully with userid : " + savedUser.getUserId();
-        } catch (Exception e) {
-            // Catch any exceptions during save operations and throw a ResourceCreationException
-            throw new ResourceCreationException("Failed to create User", e);
+            return "User is created successfully with userId : " + userId;
+        } catch (DataAccessException e) {
+            // Catch any database access exceptions and throw an InternalServerError exception
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Database access error occurred", e);
         }
-
-
     }
+
+
     public synchronized String generateUserId(String companyId, String siteId) {
         // Retrieve the current value of the unique identifier from the database for the given company and site
-        SequenceGenerator sequenceGenerator = sequenceGeneratorRepository.findByCompanyIdAndSiteId(companyId, siteId)
-                .orElse(new SequenceGenerator(companyId, siteId, 1)); // Initialize to 1 if not found
-        int uniqueIdentifier = sequenceGenerator.getNextValue();
 
-        // Concatenate company ID, site ID, and unique identifier
-        String userId = companyId + "_" + siteId + "_" + String.format("%02d", uniqueIdentifier);
+            SequenceGenerator sequenceGenerator = sequenceGeneratorRepository.findByCompanyIdAndSiteId(companyId, siteId).orElse(new SequenceGenerator(companyId, siteId, 1)); // Initialize to 1 if not found
+            int uniqueIdentifier = sequenceGenerator.getNextValue();
 
-        // Increment the unique identifier
-        uniqueIdentifier = (uniqueIdentifier + 1) % 1000; // Ensure it's always 3 digits
+            // Concatenate company ID, site ID, and unique identifier
+            String userId = companyId + "_" + siteId + "_" + String.format("%02d", uniqueIdentifier);
 
-        // Update the unique identifier value in the database
-        sequenceGenerator.setNextValue(uniqueIdentifier);
-        sequenceGeneratorRepository.save(sequenceGenerator);
+            // Increment the unique identifier
+            uniqueIdentifier = (uniqueIdentifier + 1) % 1000; // Ensure it's always 3 digits
 
-        return userId;
+            // Update the unique identifier value in the database
+            sequenceGenerator.setNextValue(uniqueIdentifier);
+            sequenceGeneratorRepository.save(sequenceGenerator);
+
+            return userId;
+
     }
 
 
@@ -191,7 +169,9 @@ public class UserMasterServiceImpl implements UserMasterService {
 
     @Override
     public Page<UserResponse> getAllUsers(Pageable pageable) {
-        Page<UserMaster> userPage = userMasterRepository.findAllByOrderByUserModifiedByDesc(pageable);
+        System.out.println("pageable = " + pageable);
+        Page<UserMaster> userPage = userMasterRepository.findAll(pageable);
+        System.out.println(userPage);
 
         Page<UserResponse> responsePage = userPage.map(userMaster -> {
             UserResponse userResponse = new UserResponse();
@@ -202,16 +182,16 @@ public class UserMasterServiceImpl implements UserMasterService {
             userResponse.setEmailId(userMaster.getUserEmailId());
             userResponse.setContactNo(userMaster.getUserContactNo());
 
+            System.out.println("-----------1----------");
             CompanyMaster company = userMaster.getCompany();
             userResponse.setCompany(company != null ? company.getCompanyName() : null);
-
+            System.out.println("-----------2----------");
             SiteMaster site = userMaster.getSite();
-            userResponse.setSite(site != null ? site.getSiteName() : null);
+            String siteAddress = site.getSiteName() + "," + site.getSiteAddress();
+            userResponse.setSite(site != null ? siteAddress : null);
 
             Set<RoleMaster> roleMasters = userAuthenticationRepository.findRolesByUserId(userMaster.getUserId());
-            Set<String> roleNames = roleMasters.stream()
-                    .map(RoleMaster::getRoleName)
-                    .collect(Collectors.toSet());
+            Set<String> roleNames = roleMasters.stream().map(RoleMaster::getRoleName).collect(Collectors.toSet());
             userResponse.setRole(roleNames);
             userResponse.setStatus(userMaster.getUserStatus());
 
@@ -237,12 +217,14 @@ public class UserMasterServiceImpl implements UserMasterService {
         userResponse.setCompany(company.getCompanyName());
 
         SiteMaster site = userMaster.getSite();
-        userResponse.setSite(site.getSiteName());
+        //combine the sitename with address
+        String siteAddress = site.getSiteName() + "," + site.getSiteAddress();
+
+        userResponse.setSite(siteAddress);
 
         Set<RoleMaster> roleMasters = userAuthenticationRepository.findRolesByUserId(userMaster.getUserId());
         // Convert Set<RoleMaster> to Set<String> using Java Streams
-        Set<String> roleNames = roleMasters.stream()
-                .map(RoleMaster::getRoleName) // Assuming getRoleName() returns the role name as String
+        Set<String> roleNames = roleMasters.stream().map(RoleMaster::getRoleName) // Assuming getRoleName() returns the role name as String
                 .collect(Collectors.toSet());
         userResponse.setRole(roleNames);
         userResponse.setStatus(userMaster.getUserStatus());
@@ -262,32 +244,29 @@ public class UserMasterServiceImpl implements UserMasterService {
     }
 
     @Override
-    public UserResponse updateUserById(UpdateRequest updateRequest, String userId) {
-        // Check if the user is existing with provided userId
-        UserMaster userMaster = userMasterRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", "userId", userId));
+    public UserResponse updateUserById(UpdateRequest updateRequest, String userId, HttpSession session) {
+        // Fetch the existing user from the database
+        UserMaster userMaster = userMasterRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "userId", userId));
 
-        CompanyMaster companyMaster = null;
-        SiteMaster siteMaster = null;
-
-        try {
-            // Find the company by name in the CompanyMaster table
-            companyMaster = companyMasterRepository.findByCompanyName(updateRequest.getCompany());
-            if (companyMaster == null) {
-                // If company is not found, throw a ResourceNotFoundException
-                throw new ResourceNotFoundException("Company", "name", updateRequest.getCompany());
-            }
-
-            // Find the site by name in the SiteMaster table
-            siteMaster = siteMasterRepository.findBySiteName(updateRequest.getSite());
-            if (siteMaster == null) {
-                // If site is not found, throw a ResourceNotFoundException
-                throw new ResourceNotFoundException("CompanySite", "name", updateRequest.getSite());
-            }
-
-        } catch (DataAccessException e) {
-            // Catch any database access exceptions and throw an InternalServerError exception
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Database access error occurred", e);
+        // Check if the new email or contact number already exists for other users
+        boolean userExists = userMasterRepository.existsByUserEmailIdAndUserIdNotOrUserContactNoAndUserIdNot(
+                updateRequest.getEmailId(), userId, updateRequest.getContactNo(), userId
+        );
+        if (userExists) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "EmailId and ContactNo is exists with another user");
         }
+
+        // Fetch company and site details
+        String[] siteInfoParts = updateRequest.getSite().split(",", 2);
+        if (siteInfoParts.length != 2) {
+            throw new IllegalArgumentException("Invalid format for site info: " + updateRequest.getSite());
+        }
+
+        String siteName = siteInfoParts[0].trim();
+        String siteAddress = siteInfoParts[1].trim();
+        SiteMaster siteMaster = siteMasterRepository.findBySiteNameAndSiteAddress(siteName, siteAddress);
+        CompanyMaster companyMaster = companyMasterRepository.findByCompanyName(updateRequest.getCompany());
 
         // Set userMaster object properties from the request
         userMaster.setCompany(companyMaster);
@@ -298,67 +277,97 @@ public class UserMasterServiceImpl implements UserMasterService {
         userMaster.setUserMiddleName(updateRequest.getMiddleName());
         userMaster.setUserLastName(updateRequest.getLastName());
 
+        // Set user modification details
+        String modifiedUser = String.valueOf(session.getAttribute("userId"));
+        LocalDateTime currentDateTime = LocalDateTime.now();
+        userMaster.setUserModifiedBy(modifiedUser);
+        userMaster.setUserModifiedDate(currentDateTime);
+
+        // Fetch the user authentication details
         UserAuthentication userAuthentication = userAuthenticationRepository.findByUserId(userId);
-        // todo: if password is coming then i have to also set the password
-        Set<String> setOfRoles = updateRequest.getRole();
-        Set<RoleMaster> updatedRoles = new HashSet<>(userAuthentication.getRoles()); // Copy current roles
 
-        if (setOfRoles != null) {
-            // Add new roles
-            setOfRoles.forEach(roleName -> {
-                RoleMaster roleMaster = roleMasterRepository.findByRoleName(roleName);
-                if (roleMaster != null && !userAuthentication.getRoles().contains(roleMaster)) {
-                    updatedRoles.add(roleMaster);
-                } else if (roleMaster == null) {
-                    throw new ResourceNotFoundException("Role", "roleName", roleName);
-                }
-            });
-
-            // Remove roles that are not in the request
-            updatedRoles.removeIf(role -> !setOfRoles.contains(role.getRoleName()));
-        }
+        // Update user roles
+        Set<RoleMaster> updatedRoles = updateRoles(userAuthentication, updateRequest.getRole());
 
         // Set the updated roles to the userAuthentication object
         userAuthentication.setRoles(updatedRoles);
 
-        UserMaster updatedUser = null;
         try {
-            // Save user to the UserMaster table
-            updatedUser = userMasterRepository.save(userMaster);
+            // Save updated user and user authentication
+            UserMaster updatedUser = userMasterRepository.save(userMaster);
+            UserAuthentication updatedAuthUser = userAuthenticationRepository.save(userAuthentication);
 
-            // Save the user authentication details to the UserAuthentication table
-            userAuthenticationRepository.save(userAuthentication);
+            // Add update to user history
+            UserHistory userHistory = userHistoryRepository.findByUserId(userId);
+            if (userHistory == null) {
+                userHistory = new UserHistory();
+                userHistory.setUserId(userId);
+            }
+            UserHistoryUpdate historyUpdate = new UserHistoryUpdate();
 
+            // Convert Set<String> to comma-separated String
+            String roles = String.join(",", getRoleNames(updatedAuthUser.getRoles()));
+
+
+            // Set the roles String to the UserHistoryUpdate
+            historyUpdate.setRoles(roles);
+            System.out.println(roles);
+
+            historyUpdate.setModifiedDate(currentDateTime);
+            historyUpdate.setModifiedBy(modifiedUser);
+            historyUpdate.setSite(siteName + ", " + siteAddress);
+            historyUpdate.setCreatedDate(updatedUser.getUserCreatedDate());
+            historyUpdate.setCreatedBy(updatedUser.getUserCreatedBy());
+            if (userHistory.getUpdates() == null) {
+                userHistory.setUpdates(new ArrayList<>());
+            }
+            userHistory.getUpdates().add(historyUpdate);
+            userHistoryRepository.save(userHistory);
+
+
+            // Prepare the response object
+            UserResponse userResponse = new UserResponse();
+            userResponse.setUserId(updatedUser.getUserId());
+            userResponse.setFirstName(updatedUser.getUserFirstName());
+            userResponse.setMiddleName(updatedUser.getUserMiddleName());
+            userResponse.setLastName(updatedUser.getUserLastName());
+            userResponse.setEmailId(updatedUser.getUserEmailId());
+            userResponse.setContactNo(updatedUser.getUserContactNo());
+            userResponse.setCompany(updatedUser.getCompany().getCompanyName());
+            userResponse.setSite(updatedUser.getSite().getSiteName());
+            userResponse.setRole(getRoleNames(updatedAuthUser.getRoles()));
+//            userResponse.setStatus(updatedUser.getUserStatus());
+
+            return userResponse;
+        } catch (DataAccessException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Database access error occurred", e);
         } catch (Exception e) {
             // Catch any exceptions during save operations and throw a ResourceCreationException
             throw new ResourceCreationException("Failed to Update User", e);
         }
+    }
 
-        UserResponse userResponse = new UserResponse();
-        userResponse.setUserId(updatedUser.getUserId());
-        userResponse.setFirstName(updatedUser.getUserFirstName());
-        userResponse.setMiddleName(updatedUser.getUserMiddleName());
-        userResponse.setLastName(updatedUser.getUserLastName());
-        userResponse.setEmailId(updatedUser.getUserEmailId());
-        userResponse.setContactNo(updatedUser.getUserContactNo());
+    private Set<RoleMaster> updateRoles(UserAuthentication userAuthentication, Set<String> updatedRoleNames) {
+        Set<RoleMaster> updatedRoles = new HashSet<>();
+        if (updatedRoleNames != null) {
+            Iterable<RoleMaster> roleMasters = roleMasterRepository.findAllByRoleNameIn(updatedRoleNames);
+            Map<String, RoleMaster> roleMap = new HashMap<>();
+            roleMasters.forEach(role -> roleMap.put(role.getRoleName(), role));
 
-        CompanyMaster company = updatedUser.getCompany();
-        userResponse.setCompany(company.getCompanyName());
+            updatedRoleNames.forEach(roleName -> {
+                RoleMaster roleMaster = roleMap.get(roleName);
+                if (roleMaster != null) {
+                    updatedRoles.add(roleMaster);
+                } else {
+                    throw new ResourceNotFoundException("Role", "roleName", roleName);
+                }
+            });
+        }
+        return updatedRoles;
+    }
 
-        SiteMaster site = updatedUser.getSite();
-        userResponse.setSite(site.getSiteName());
-
-        Set<RoleMaster> roleMasters = userAuthenticationRepository.findRolesByUserId(userId);
-        // Convert Set<RoleMaster> to Set<String> using Java Streams
-        Set<String> roleNames = roleMasters.stream()
-                .map(RoleMaster::getRoleName) // Assuming getRoleName() returns the role name as String
-                .collect(Collectors.toSet());
-        userResponse.setRole(roleNames);
-
-        return userResponse;
-
+    private Set<String> getRoleNames(Set<RoleMaster> roles) {
+        return roles.stream().map(RoleMaster::getRoleName).collect(Collectors.toSet());
     }
 
 }
-
-

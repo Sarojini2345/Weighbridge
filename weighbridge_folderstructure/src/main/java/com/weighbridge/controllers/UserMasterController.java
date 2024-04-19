@@ -1,10 +1,12 @@
 package com.weighbridge.controllers;
 
+import com.weighbridge.payloads.LoginResponse;
 import com.weighbridge.payloads.UpdateRequest;
 import com.weighbridge.payloads.UserRequest;
 import com.weighbridge.entities.UserMaster;
 import com.weighbridge.payloads.UserResponse;
 import com.weighbridge.services.UserMasterService;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,23 +29,25 @@ public class UserMasterController {
 
     // Create new user
     @PostMapping
-    public ResponseEntity<String> createUser(@Validated @RequestBody UserRequest userRequest){
-        String response = userMasterService.createUser(userRequest);
+    public ResponseEntity<String> createUser(@Validated @RequestBody UserRequest userRequest, HttpSession httpSession){
+        String response = userMasterService.createUser(userRequest,httpSession);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     // Get all users
     @GetMapping
     public ResponseEntity<List<UserResponse>> getAllUsers(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String sortField,
-            @RequestParam(defaultValue = "desc") String sortOrder) {
+            @RequestParam(defaultValue = "0", required = false) int page,
+            @RequestParam(defaultValue = "10", required = false) int size,
+            @RequestParam(required = false, defaultValue = "userModifiedDate") String sortField,
+            @RequestParam(defaultValue = "desc", required = false) String sortOrder) {
 
         Pageable pageable;
 
+        System.out.println("hjsadljfhj"+sortField+" ordre"+sortOrder);
         if (sortField != null && !sortField.isEmpty()) {
             Sort.Direction direction = sortOrder.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
+            System.out.println("direction "+direction);
             Sort sort = Sort.by(direction, sortField);
             pageable = PageRequest.of(page, size, sort);
         } else {
@@ -73,10 +77,12 @@ public class UserMasterController {
 
     // Update user by userId
     @PutMapping("/updateUser/{userId}")
-    public ResponseEntity<UserResponse> updateUserById(@Validated @RequestBody UpdateRequest updateRequest, @PathVariable String userId){
+    public ResponseEntity<UserResponse> updateUserById(@Validated @RequestBody UpdateRequest updateRequest, @PathVariable String userId,HttpSession httpSession){
 
-        UserResponse response = userMasterService.updateUserById(updateRequest, userId);
+        UserResponse response = userMasterService.updateUserById(updateRequest, userId,httpSession);
         return ResponseEntity.ok(response);
     }
+
+
 
 }

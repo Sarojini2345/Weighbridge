@@ -1,6 +1,8 @@
 package com.weighbridge.controllers;
 
 import com.weighbridge.dtos.LoginDto;
+import com.weighbridge.dtos.ResetPasswordDto;
+import com.weighbridge.entities.UserAuthentication;
 import com.weighbridge.payloads.LoginResponse;
 import com.weighbridge.services.UserAuthenticationService;
 
@@ -21,5 +23,12 @@ public class UserAuthenticationController {
         LoginResponse response = userAuthenticationService.loginUser(loginDto);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/reset/{userId}")
+    public ResponseEntity<String> resetPassword(@PathVariable String userId,@RequestBody ResetPasswordDto resetPasswordDto){
+        UserAuthentication userAuthentication=userAuthenticationService.resetPassword(userId,resetPasswordDto);
+        return new ResponseEntity<>("Password Reset Succesful!",HttpStatus.OK);
+    }
+
 
 }

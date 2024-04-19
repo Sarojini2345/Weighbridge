@@ -6,11 +6,17 @@ import com.weighbridge.exceptions.ResourceCreationException;
 import com.weighbridge.exceptions.ResourceNotFoundException;
 import com.weighbridge.repsitories.RoleMasterRepository;
 import com.weighbridge.services.RoleMasterService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,9 +26,19 @@ public class RoleMasterServiceImpl implements RoleMasterService {
 
     private final RoleMasterRepository roleMasterRepository;
     private final ModelMapper modelMapper;
+
+    @Autowired
+    HttpServletRequest request;
     @Override
     public RoleMasterDto createRole(RoleMasterDto roleDto) {
+        RoleMaster byRoleName = roleMasterRepository.findByRoleName(roleDto.getRoleName());
+        if(byRoleName!=null){
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"Role already exist");
 
+        }
+        HttpSession session=request.getSession();
+        roleDto.setRoleCreatedBy(String.valueOf(session.getAttribute("userId")));
+        roleDto.setRoleCreatedDate(LocalDateTime.now());
         RoleMaster role = modelMapper.map(roleDto, RoleMaster.class);
 
         RoleMaster savedRole = null;

@@ -29,10 +29,3 @@ public class SequenceGenerator {
 
 }
 
-@Data
-class SequenceGeneratorPK implements Serializable {
-    private String companyId;
-    private String siteId;
-
-
-}

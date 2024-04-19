@@ -8,6 +8,8 @@ public class LoginResponse {
     private String message;
     private Set<String> roles;
 
+    private String userId;
+
     private String userName;
 
     public String getUserName() {
@@ -33,5 +35,13 @@ public class LoginResponse {
 
     public void setRoles(Set<String> roles) {
         this.roles = roles;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 }

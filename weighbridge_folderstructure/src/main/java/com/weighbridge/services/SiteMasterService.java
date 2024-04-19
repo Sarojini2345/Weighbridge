@@ -4,6 +4,7 @@ import com.weighbridge.dtos.SiteMasterDto;
 import com.weighbridge.payloads.SiteRequest;
 
 import java.util.List;
+import java.util.Map;
 
 public interface SiteMasterService {
     SiteMasterDto createSite(SiteMasterDto siteMasterDto);
@@ -12,5 +13,5 @@ public interface SiteMasterService {
 
     String assignSite(SiteRequest siteRequest);
 
-    List<String> findAllByCompanySites(String companyName);
+    List<Map<String, String>> findAllByCompanySites(String companyName);
 }

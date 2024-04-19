@@ -1,6 +1,5 @@
 package com.weighbridge.controllers;
 
-import com.weighbridge.dtos.CompanyMasterDto;
 import com.weighbridge.dtos.SiteMasterDto;
 import com.weighbridge.payloads.SiteRequest;
 import com.weighbridge.services.SiteMasterService;
@@ -11,6 +10,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -19,11 +19,11 @@ public class SiteMasterController {
 
     private final SiteMasterService siteMasterService;
 
-    @PostMapping
-    public ResponseEntity<SiteMasterDto> createSite(@Validated @RequestBody SiteMasterDto siteMasterDto){
-        SiteMasterDto savedSite = siteMasterService.createSite(siteMasterDto);
-        return new ResponseEntity<>(savedSite, HttpStatus.CREATED);
-    }
+//    @PostMapping
+//    public ResponseEntity<SiteMasterDto> createSite(@Validated @RequestBody SiteMasterDto siteMasterDto){
+//        SiteMasterDto savedSite = siteMasterService.createSite(siteMasterDto);
+//        return new ResponseEntity<>(savedSite, HttpStatus.CREATED);
+//    }
 
     @PostMapping("/assignCompany")
     public ResponseEntity<String> assignSite(@Validated @RequestBody SiteRequest siteRequest){
@@ -40,8 +40,8 @@ public class SiteMasterController {
 
     // todo: create method to get all the sites as a list of strings
     @GetMapping("/company/{companyName}")
-    public ResponseEntity<List<String>> GetAllSitesOfCompany(@PathVariable String companyName){
-        List<String> allByCompanySites = siteMasterService.findAllByCompanySites(companyName);
+    public ResponseEntity<List<Map<String, String>>> GetAllSitesOfCompany(@PathVariable String companyName){
+        List<Map<String, String>> allByCompanySites = siteMasterService.findAllByCompanySites(companyName);
         return ResponseEntity.ok(allByCompanySites);
     }
 }

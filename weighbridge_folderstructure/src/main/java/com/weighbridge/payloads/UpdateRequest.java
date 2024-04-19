@@ -10,13 +10,13 @@ import java.util.Set;
 
 @Data
 public class UpdateRequest {
-    @NotBlank(message = "User id is required")
+    /*@NotBlank(message = "User id is required")
     @Size(min=5, max = 15, message = "UserId id must be between 5 and 15 characters")
-    @Pattern(regexp = "^[A-Za-z0-9]+$", message = "UserId must be alphanumeric")
-    private String userId;
+    private String userId;*/
 
     @NotBlank(message = "Site is required")
     private String site;
+
 
     @NotBlank(message = "Company is required")
     private String company;

@@ -36,7 +36,9 @@ public class CompanyMasterServiceImpl implements CompanyMasterService {
         companyMasterDto.setCompanyId(generateCompanyId(companyMasterDto.getCompanyName()));
         HttpSession session = request.getSession();
         companyMasterDto.setCompanyCreatedBy(String.valueOf(session.getAttribute("userId")));
+        companyMasterDto.setCompanyModifiedBy(String.valueOf(session.getAttribute("userId")));
         companyMasterDto.setCompanyCreatedDate(LocalDateTime.now());
+        companyMasterDto.setCompanyModifiedDate(LocalDateTime.now());
         CompanyMaster company = modelMapper.map(companyMasterDto, CompanyMaster.class);
 
         CompanyMaster savedCompany = companyMasterRepository.save(company);
@@ -44,7 +46,7 @@ public class CompanyMasterServiceImpl implements CompanyMasterService {
         return modelMapper.map(savedCompany, CompanyMasterDto.class);
     }
 
-    private static String generateCompanyId(String companyName) {
+    private String generateCompanyId(String companyName) {
         String companyAbbreviation = "";
         if (companyName.length() >= 3) {
             companyAbbreviation = companyName.substring(0, 1).toUpperCase() + companyName.substring(2, 3).toUpperCase();
@@ -55,7 +57,18 @@ public class CompanyMasterServiceImpl implements CompanyMasterService {
             companyAbbreviation = companyName.substring(0, 1).toUpperCase();
         }
         // Concatenate the abbreviation and unique identifier
-        String companyId = companyAbbreviation ;
+        long siteCount = companyMasterRepository.countByCompanyNameStartingWith(companyAbbreviation);
+
+        // Generate the site ID based on the count
+        String companyId;
+        if (siteCount > 0) {
+            // If other sites with the same abbreviation exist, append a numeric suffix
+            companyId = String.format("%s%02d", companyAbbreviation, siteCount + 1);
+        } else {
+            // Otherwise, use the abbreviation without a suffix
+            companyId = companyAbbreviation+ "01";;
+        }
+
         return companyId;
     }
 

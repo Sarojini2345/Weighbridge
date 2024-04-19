@@ -15,10 +15,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "user_master", uniqueConstraints = {
-        @UniqueConstraint(columnNames = "email_id", name = "unique_email_id"),
-        @UniqueConstraint(columnNames = "contact_no", name = "unique_contact_no")
-})
+@Table(name = "user_master")
 public class UserMaster {
 
     @Id
@@ -27,12 +24,12 @@ public class UserMaster {
     @Size(min=5, max = 15, message = "UserId id must be between 5 and 15 characters")
     private String userId;
 
-    @NotNull(message = "Site is required")
+    //@NotNull(message = "Site is required")
     @ManyToOne
     @JoinColumn(name = "site_id", referencedColumnName = "  site_id")
     private SiteMaster site;
 
-    @NotNull(message = "Company is required")
+   // @NotNull(message = "Company is required")
     @ManyToOne
     @JoinColumn(name = "company_id", referencedColumnName = "company_id")
     private CompanyMaster company;
@@ -77,4 +74,3 @@ public class UserMaster {
     private LocalDateTime userModifiedDate;
 
 }
-
