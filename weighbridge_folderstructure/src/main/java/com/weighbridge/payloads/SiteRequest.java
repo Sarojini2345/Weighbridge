@@ -13,4 +13,5 @@ public class SiteRequest {
     private String siteName;
     private String siteAddress;
 
+
 }

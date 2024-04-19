@@ -32,7 +32,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
     @Override
     public SupplierMasterDto createSupplier(SupplierMasterDto supplierMasterDto) {
         try {
-
             // Check if the supplier contact number or email already exists
             boolean exists = supplierMasterRepository.existsBySupplierContactNoOrSupplierEmail(
                     supplierMasterDto.getSupplierContactNo(),
@@ -46,7 +45,6 @@ public class SupplierMasterServiceImpl implements SupplierMasterService {
             if (supplierMasterDto == null) {
                 throw new ResourceNotFoundException("supplierMasterDto is null");
             }
-
             SupplierMaster newSupplierMaster = modelMapper.map(supplierMasterDto, SupplierMaster.class);
             HttpSession session = httpServletRequest.getSession();
             String userId = String.valueOf(session.getAttribute("userId"));
