@@ -40,33 +40,48 @@ public class VehicleMasterServiceImpl implements VehicleMasterService {
 
     @Override
     public String addVehicle(VehicleMasterDto vehicleMasterDto) {
+        VehicleMaster vehicleMaster=vehicleMasterRepository.findByVehicleNo(vehicleMasterDto.getVehicleNo());
         HttpSession session = request.getSession();
         LocalDateTime currentDateTime = LocalDateTime.now();
-        VehicleMaster vehicleMasters = new VehicleMaster();
-        vehicleMasters.setCreatedDate(currentDateTime);
-        vehicleMasters.setModifiedDate(currentDateTime);
-        vehicleMasters.setCreatedBy(session.getAttribute("userId").toString());
-        vehicleMasters.setModifiedBy(session.getAttribute("userId").toString());
-        vehicleMasters.setVehicleNo(vehicleMasterDto.getVehicleNo());
-        //assigning transporter to vehicle
-        List<TransporterMaster> transporterMasterList = new ArrayList<>();
+        if(vehicleMaster==null) {
+            VehicleMaster vehicleMasters = new VehicleMaster();
+            vehicleMasters.setCreatedDate(currentDateTime);
+            vehicleMasters.setModifiedDate(currentDateTime);
+            vehicleMasters.setCreatedBy(session.getAttribute("userId").toString());
+            vehicleMasters.setModifiedBy(session.getAttribute("userId").toString());
+            vehicleMasters.setVehicleNo(vehicleMasterDto.getVehicleNo());
 
-        transporterMasterList.addAll(getAllTransportMaster(vehicleMasterDto.getVehicleNo()));
-      //  System.out.println("--------"+getAllTransportMaster(vehicleMasterDto.getVehicleNo()));
-        TransporterMaster byTransporterName = transporterMasterRepository.findByTransporterName(vehicleMasterDto.getTransporterMaster());
-        transporterMasterList.add(byTransporterName);
-
+            //assigning transporter to vehicle
+            List<TransporterMaster> transporterMasterList = new ArrayList<>();
+            transporterMasterList.addAll(getAllTransportMaster(vehicleMasterDto.getVehicleNo()));
+            //  System.out.println("--------"+getAllTransportMaster(vehicleMasterDto.getVehicleNo()));
+            TransporterMaster byTransporterName = transporterMasterRepository.findByTransporterName(vehicleMasterDto.getTransporterMaster());
+            transporterMasterList.add(byTransporterName);
+            vehicleMasters.setTransporter(transporterMasterList);
 //        transporterMasterList.add(transporterMasterRepository.findByTransporterName("Maa tarini transporter"));
-        vehicleMasters.setTransporter(transporterMasterList);
 
-        vehicleMasters.setVehicleManufacturer(vehicleMasterDto.getVehicleManufacturer());
-        vehicleMasters.setVehicleType(vehicleMasterDto.getVehicleType());
-        vehicleMasters.setLoadCapacity(vehicleMasterDto.getLoadCapacity());
-        vehicleMasters.setFitnessUpto(vehicleMasterDto.getFitnessUpto());
-        vehicleMasters.setWheelsNo(vehicleMasterDto.getWheelsNo());
-        vehicleMasters.setTareWeight(vehicleMasterDto.getTareWeight());
-        vehicleMasterRepository.save(vehicleMasters);
-        return "Vehicle added successfully";
+            vehicleMasters.setVehicleManufacturer(vehicleMasterDto.getVehicleManufacturer());
+            vehicleMasters.setVehicleType(vehicleMasterDto.getVehicleType());
+            vehicleMasters.setLoadCapacity(vehicleMasterDto.getLoadCapacity());
+            vehicleMasters.setFitnessUpto(vehicleMasterDto.getFitnessUpto());
+            vehicleMasters.setWheelsNo(vehicleMasterDto.getWheelsNo());
+            vehicleMasters.setTareWeight(vehicleMasterDto.getTareWeight());
+            vehicleMasterRepository.save(vehicleMasters);
+            return "Vehicle added successfully";
+        }
+        else{
+            //assigning only transporter
+            List<TransporterMaster> transporterMasterList = new ArrayList<>();
+            transporterMasterList.addAll(getAllTransportMaster(vehicleMasterDto.getVehicleNo()));
+            //  System.out.println("--------"+getAllTransportMaster(vehicleMasterDto.getVehicleNo()));
+            TransporterMaster byTransporterName = transporterMasterRepository.findByTransporterName(vehicleMasterDto.getTransporterMaster());
+            transporterMasterList.add(byTransporterName);
+            vehicleMaster.setTransporter(transporterMasterList);
+            vehicleMaster.setModifiedBy(session.getAttribute("userId").toString());
+            vehicleMaster.setModifiedDate(currentDateTime);
+            vehicleMasterRepository.save(vehicleMaster);
+            return "transporter updated";
+        }
     }
 
 private List<TransporterMaster> getAllTransportMaster(String vehicleNo){
@@ -94,7 +109,21 @@ private List<TransporterMaster> getAllTransportMaster(String vehicleNo){
         VehicleResponse vehicleResponse = new VehicleResponse();
         vehicleResponse.setVehicleNo(vehicleNo);
         vehicleResponse.setVehicleManufacturer(byId.getVehicleManufacturer());
-        vehicleResponse.setTransporter(byId.getTransporter().toString());
+        List<TransporterMaster> transporters = byId.getTransporter();
+
+        if (!transporters.isEmpty()) {
+            // Get the last transporter from the list
+            TransporterMaster latestTransporter = transporters.get(transporters.size() - 1);
+
+            // Set the name of the latest transporter in the vehicle response
+            vehicleResponse.setTransporter(latestTransporter.getTransporterName());
+        } /*else {
+            // Handle case where there are no transporters associated with the vehicle
+            // You can set transporter name to null or handle it according to your requirement
+
+        }*/
+
+
         vehicleResponse.setFitnessUpto(byId.getFitnessUpto());
         vehicleResponse.setVehicleType(byId.getVehicleType());
         return vehicleResponse;
