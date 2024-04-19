@@ -27,5 +27,4 @@ public class TransporterMasterController {
         List<String> allTransporter = transporterService.getAllTransporter();
         return ResponseEntity.ok(allTransporter);
     }
-
 }

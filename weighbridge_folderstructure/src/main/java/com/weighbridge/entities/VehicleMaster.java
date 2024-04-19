@@ -2,6 +2,8 @@ package com.weighbridge.entities;
 
 import jakarta.persistence.*;
 import lombok.Data;
+
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -11,6 +13,7 @@ public class VehicleMaster {
     @Id
     private String vehicleNo;
 
+    private String status="Active";
     @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinTable(
             name = "transporter_vehicle",
@@ -30,4 +33,9 @@ public class VehicleMaster {
     private Double loadCapacity;
 
     private Date fitnessUpto;
+
+    private String createdBy;
+    private  String modifiedBy;
+    private LocalDateTime createdDate;
+    private LocalDateTime modifiedDate;
 }

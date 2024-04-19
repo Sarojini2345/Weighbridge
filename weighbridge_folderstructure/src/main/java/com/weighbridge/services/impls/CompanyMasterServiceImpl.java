@@ -36,7 +36,9 @@ public class CompanyMasterServiceImpl implements CompanyMasterService {
         companyMasterDto.setCompanyId(generateCompanyId(companyMasterDto.getCompanyName()));
         HttpSession session = request.getSession();
         companyMasterDto.setCompanyCreatedBy(String.valueOf(session.getAttribute("userId")));
+        companyMasterDto.setCompanyModifiedBy(String.valueOf(session.getAttribute("userId")));
         companyMasterDto.setCompanyCreatedDate(LocalDateTime.now());
+        companyMasterDto.setCompanyModifiedDate(LocalDateTime.now());
         CompanyMaster company = modelMapper.map(companyMasterDto, CompanyMaster.class);
 
         CompanyMaster savedCompany = companyMasterRepository.save(company);

@@ -19,11 +19,11 @@ public class SiteMasterController {
 
     private final SiteMasterService siteMasterService;
 
-    @PostMapping
-    public ResponseEntity<SiteMasterDto> createSite(@Validated @RequestBody SiteMasterDto siteMasterDto){
-        SiteMasterDto savedSite = siteMasterService.createSite(siteMasterDto);
-        return new ResponseEntity<>(savedSite, HttpStatus.CREATED);
-    }
+//    @PostMapping
+//    public ResponseEntity<SiteMasterDto> createSite(@Validated @RequestBody SiteMasterDto siteMasterDto){
+//        SiteMasterDto savedSite = siteMasterService.createSite(siteMasterDto);
+//        return new ResponseEntity<>(savedSite, HttpStatus.CREATED);
+//    }
 
     @PostMapping("/assignCompany")
     public ResponseEntity<String> assignSite(@Validated @RequestBody SiteRequest siteRequest){
