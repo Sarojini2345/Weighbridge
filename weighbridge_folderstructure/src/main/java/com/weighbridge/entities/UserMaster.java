@@ -74,4 +74,3 @@ public class UserMaster {
     private LocalDateTime userModifiedDate;
 
 }
-

@@ -3,6 +3,7 @@ package com.weighbridge.dtos;
 import com.weighbridge.entities.TransporterMaster;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -22,5 +23,10 @@ public class VehicleMasterDto {
 
     private Date fitnessUpto;
 
-    private List<TransporterMaster> transporterMasters;
+    private String transporterMaster;
+
+    private String createdBy;
+    private  String modifiedBy;
+    private LocalDateTime createdDate;
+    private LocalDateTime modifiedDate;
 }
